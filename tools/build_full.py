@@ -32,7 +32,7 @@ ORDER = [
     u"SL_STK1", u"SL_STK2", u"SL_STK3", u"SL_STK4", u"SL_SPSEL",
     u"SL_ADV", u"SL_JRET", u"SL_BRNE", u"SL_BRN2", u"SL_PCSEL",
     u"FB_CPU_Addr1", u"FB_CPU_Select", u"FB_CPU_Stack", u"FB_CPU_AluFlags",
-    u"FB_CPU_PcWb", u"FB_CPU_Store", u"FB_RegFile", u"FB_CPU_Core",
+    u"FB_CPU_PcWb", u"FB_CPU_Store", u"FB_Latch", u"FB_RegFile", u"FB_CPU_Core",
 ]
 
 STATE = [(u"A", u"BYTE"), (u"X", u"BYTE"), (u"Y", u"BYTE"), (u"P", u"BYTE"),

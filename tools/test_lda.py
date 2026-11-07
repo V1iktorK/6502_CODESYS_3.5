@@ -74,16 +74,21 @@ except Exception:
 if oa is not None:
     # ---- загрузка программы ПОСЛЕ старта
     try:
-        prog = [(512, 0xA9), (513, 0x42), (514, 0x4C), (515, 0x00), (516, 0x02)]
-        for addr, val in prog:
-            oa.set_prepared_value(u"GVL_MEM.Mem[%d]" % addr, u"16#%02X" % val)
-        # Запись в GVL_CPU izvne ne prizhivaetsya (programma perezapisyvaet kazhdyy
-        # skan), a zapis v pamyat -- rabotaet. Poetomu startovyy adres zadаem
-        # cherez vektor BRK: $FFFE/$FFFF = $0200. Yadro v etot moment krutit BRK
-        # po adresu 0 i samo perejdet na nashu programmu.
-        oa.set_prepared_value(u"GVL_MEM.Mem[65534]", u"16#00")
-        oa.set_prepared_value(u"GVL_MEM.Mem[65535]", u"16#02")
-        oa.write_prepared_values()
+        # ВАЖНО (конспект 5.5): write_prepared_values() применяет ТОЛЬКО последнее
+        # значение, поэтому пишем и подтверждаем ПО ОДНОМУ.
+        writes = [(u"GVL_MEM.Mem[512]", u"16#A9"), (u"GVL_MEM.Mem[513]", u"16#42"),
+                  (u"GVL_MEM.Mem[514]", u"16#4C"), (u"GVL_MEM.Mem[515]", u"16#00"),
+                  (u"GVL_MEM.Mem[516]", u"16#02"),
+                  (u"GVL_MEM.Mem[65534]", u"16#00"), (u"GVL_MEM.Mem[65535]", u"16#02"),
+                  (u"GVL_CPU.PC", u"16#0200"), (u"GVL_CPU.SP", u"16#FF"),
+                  (u"GVL_CPU.A", u"16#00"), (u"GVL_CPU.X", u"16#00"),
+                  (u"GVL_CPU.Y", u"16#00"), (u"GVL_CPU.P", u"16#30")]
+        for nm, val in writes:
+            try:
+                oa.set_prepared_value(nm, val)
+                oa.write_prepared_values()
+            except Exception:
+                log(u"  не записалось: %s" % nm)
         log(u"программа записана после старта")
     except Exception:
         log(u"ошибка записи: %s" % traceback.format_exc().strip().splitlines()[-1])

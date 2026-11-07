@@ -71,7 +71,6 @@ def fb_addr1():
          [(u"OFFW", R(s, u"OFFW")), (u"PC2", R(s, u"PC2"))], 10)
     call(s, u"SL_BRK", u"A7", [], 12, w=100)
     W(s, u"C_STK", R(s, u"C_ABS"), 13)
-    W(s, u"P_BRK", R(s, u"BRKV"), 14)
     return s
 
 
@@ -84,7 +83,6 @@ def fb_select():
          [(u"ADDR_MODE", R(s, u"ADDR_MODE")), (u"EFF", R(s, u"EFF")),
           (u"OP1", R(s, u"OP1"))], 3, w=120)
     # (SL_WDATA2 dlya imm bеret OP1 -- sm. shapku modulya)
-    W(s, u"P_EFF", R(s, u"EFF"), 4)
     return s
 
 
@@ -104,10 +102,6 @@ def fb_stack():
          [(u"PCs", R(s, u"PC")), (u"LEN", R(s, u"LEN"))], 8, w=100)
     call(s, u"SL_JRET", u"Jr",
          [(u"STK_R0", R(s, u"STK_R0")), (u"STK_R1", R(s, u"STK_R1"))], 9, w=110)
-    W(s, u"P_JRET", R(s, u"JRET"), 11)
-    W(s, u"P_ADV", R(s, u"ADV"), 11)
-    W(s, u"P_KEEP", R(s, u"PC"), 11)
-    W(s, u"PULL_LO", s.ref(G.MEM + u".Mem[STK_R0]", 11), 11)
     return s
 
 
@@ -219,6 +213,24 @@ def fb_regfile():
     return s
 
 
+def fb_latch():
+    """FB_Latch: защёлкивание межуровневых значений в GVL_CPU.
+
+    По конспекту (2.5): запись и чтение одной ячейки в пределах одного POU
+    разъезжаются на такт. Поэтому все "перекладки" P_* живут здесь: этот POU
+    только читает ячейки, записанные предыдущими слоями, и только пишет P_*.
+    """
+    s = Sheet(u"FB_Latch: защёлкивание межуровневых значений")
+    W(s, u"P_EFF", R(s, u"EFF"), 1)
+    W(s, u"P_BRK", R(s, u"BRKV"), 3)
+    W(s, u"P_BRN", R(s, u"BRN_TGT"), 5)
+    W(s, u"P_JRET", R(s, u"JRET"), 7)
+    W(s, u"P_ADV", R(s, u"ADV"), 9)
+    W(s, u"P_KEEP", R(s, u"PC"), 11)
+    W(s, u"PULL_LO", s.ref(G.MEM + u".Mem[STK_R0]", 13), 14)
+    return s
+
+
 def fb_core():
     s = Sheet(u"FB_CPU_Core: один такт MOS 6502")
     W(s, u"Enable", s.ref(u"Enable", 0), 1)      # проброс разрешения такта в GVL
@@ -233,13 +245,14 @@ def fb_core():
     for sig in (u"LD_A", u"LD_X", u"LD_Y", u"LD_P", u"LD_SP", u"WR_MEM"):
         W(s, sig + u"_E",
           s.blk(u"AND", [(u"IN1", R(s, sig)), (u"IN2", R(s, u"Enable"))], 4), 4)
-    call(s, u"FB_CPU_Addr1", u"S1", [], 5, w=140)
-    call(s, u"FB_CPU_Select", u"S2", [], 6, w=140)
-    call(s, u"FB_CPU_Stack", u"S3", [], 7, w=140)
-    call(s, u"FB_CPU_AluFlags", u"S4", [], 8, w=140)
-    call(s, u"FB_CPU_PcWb", u"S5", [], 9, w=140)
-    call(s, u"FB_CPU_Store", u"S6", [], 10, w=140)
-    call(s, u"FB_RegFile", u"S7", [], 11, w=140)
+    call(s, u"FB_CPU_Addr1", u"S1", [(u"Enable", s.const(u"TRUE", 0))], 5, w=140)
+    call(s, u"FB_CPU_Select", u"S2", [(u"Enable", s.const(u"TRUE", 0))], 6, w=140)
+    call(s, u"FB_CPU_Stack", u"S3", [(u"Enable", s.const(u"TRUE", 0))], 7, w=140)
+    call(s, u"FB_CPU_AluFlags", u"S4", [(u"Enable", s.const(u"TRUE", 0))], 8, w=140)
+    call(s, u"FB_Latch", u"S5L", [(u"Enable", s.const(u"TRUE", 0))], 9, w=140)
+    call(s, u"FB_CPU_PcWb", u"S5", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
+    call(s, u"FB_CPU_Store", u"S6", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
+    call(s, u"FB_RegFile", u"S7", [(u"Enable", s.const(u"TRUE", 0))], 11, w=140)
     W(s, u"Done", R(s, u"Enable"), 11)
     return s
 
@@ -264,19 +277,19 @@ def main():
 
     write(u"FB_CPU_Addr1", pou_xml(
         u"FB_CPU_Addr1", u"functionBlock",
-        interface(locals_=pouloc(u"A1", u"SL_C1A", u"A2", u"SL_C1B", u"YW1", u"SL_YW",
+        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"A1", u"SL_C1A", u"A2", u"SL_C1B", u"YW1", u"SL_YW",
                                  u"A3", u"SL_IND2", u"A4", u"SL_INDP", u"A5", u"SL_RELA",
                                  u"A6", u"SL_RELC", u"A7", u"SL_BRK")),
         [fb_addr1()], u"кандидаты адресов"))
 
     write(u"FB_CPU_Select", pou_xml(
         u"FB_CPU_Select", u"functionBlock",
-        interface(locals_=pouloc(u"Pick", u"SL_SELECT12", u"Wd", u"SL_WDATA2")),
+        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"Pick", u"SL_SELECT12", u"Wd", u"SL_WDATA2")),
         [fb_select()], u"выбор адреса"))
 
     write(u"FB_CPU_Stack", pou_xml(
         u"FB_CPU_Stack", u"functionBlock",
-        interface(locals_=pouloc(u"St1", u"SL_STK1", u"St2", u"SL_STK2",
+        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"St1", u"SL_STK1", u"St2", u"SL_STK2",
                                  u"St3", u"SL_STK3", u"St4", u"SL_STK4",
                                  u"SpSel", u"SL_SPSEL", u"Adv", u"SL_ADV",
                                  u"Jr", u"SL_JRET")),
@@ -284,13 +297,13 @@ def main():
 
     write(u"FB_CPU_AluFlags", pou_xml(
         u"FB_CPU_AluFlags", u"functionBlock",
-        interface(locals_=pouloc(u"Alu", u"FB_ALU6502", u"Flg", u"FB_Flags",
+        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"Alu", u"FB_ALU6502", u"Flg", u"FB_Flags",
                                  u"Br", u"SL_BRNE")),
         [fb_aluflags()], u"АЛУ и флаги"))
 
     write(u"FB_CPU_PcWb", pou_xml(
         u"FB_CPU_PcWb", u"functionBlock",
-        interface(locals_=pouloc(u"Bt", u"SL_BRN2", u"Ps", u"SL_PCSEL",
+        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"Bt", u"SL_BRN2", u"Ps", u"SL_PCSEL",
                                  u"Wb", u"FB_WriteBack") +
                   [(u"N_A", u"BYTE"), (u"N_X", u"BYTE"), (u"N_Y", u"BYTE"),
                    (u"N_P", u"BYTE"), (u"N_SP", u"BYTE"), (u"N_PC", u"WORD")]),
@@ -302,17 +315,22 @@ def main():
                   locals_=pouloc(u"Fch", u"FB_Fetch", u"Dec", u"FB_Decoder6502",
                                  u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
                                  u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
-                                 u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S7", u"FB_RegFile")),
+                                 u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S7", u"FB_RegFile")),
         [fb_core()], u"такт"))
 
     write(u"FB_CPU_Store", pou_xml(
         u"FB_CPU_Store", u"functionBlock",
-        interface(locals_=[]),
+        interface(inputs=[(u"Enable", u"BOOL")], locals_=[]),
         [fb_store()], u"запись в память"))
+
+    write(u"FB_Latch", pou_xml(
+        u"FB_Latch", u"functionBlock",
+        interface(inputs=[(u"Enable", u"BOOL")], locals_=[]),
+        [fb_latch()], u"защёлкивание значений"))
 
     write(u"FB_RegFile", pou_xml(
         u"FB_RegFile", u"functionBlock",
-        interface(locals_=[]),
+        interface(inputs=[(u"Enable", u"BOOL")], locals_=[]),
         [fb_regfile()], u"запись регистров"))
 
     write(u"PRG_PLC", pou_xml(
