@@ -12,6 +12,8 @@ FBD-схемы (со всеми блоками, проводами и коорд
   внутри колонки элементы автоматически укладываются сверху вниз
 """
 
+import re
+
 COLW = 260          # шаг колонок по X
 ROWGAP = 20         # вертикальный зазор между элементами
 TOPY = 40           # верхняя граница листа
@@ -285,8 +287,53 @@ class Sheet(object):
             % (i, h, w, self.x(col), y, h // 2, conn, esc(expr)))
         return i
 
+    def _build_index(self):
+        self._byid = {}
+        for e in self.els:
+            m = re.search(u'localId="(\d+)"', e[:200]) if False else None
+            m = re.search(u'localId="(\d+)"', e[:200])
+            if m:
+                self._byid[int(m.group(1))] = e
+
+    def _clone(self, src_id, mapping):
+        """Глубокая копия элемента src_id и всех его предков. Возвращает новый id.
+
+        Нужна для развёртывания fan-out (конспект 2.1): каждый выход должен
+        питать ровно один вход, поэтому лишние потребители получают копию
+        ветви, а не общую ссылку.
+        """
+        if src_id in mapping:
+            return mapping[src_id]
+        el = getattr(self, "_byid", {}).get(src_id)
+        if el is None:
+            return src_id
+        new_id = self.nid()
+        mapping[src_id] = new_id
+
+        def repl(m):
+            return u'refLocalId="%d"' % self._clone(int(m.group(1)), mapping)
+
+        body = re.sub(u'refLocalId="(\d+)"', repl, el)
+        body = re.sub(u'localId="\d+"', u'localId="%d"' % new_id, body, count=1)
+        self.els.append(body)
+        self._byid[new_id] = body
+        return new_id
+
     def xml(self):
-        return u"<FBD>" + u"".join(self.els) + u"</FBD>"
+        """Собрать <FBD> с развёрнутым fan-out (каждый выход — ровно одному входу)."""
+        self._build_index()
+        seen = {}
+        out_els = []
+        for e in self.els:
+            def repl(m):
+                src = int(m.group(1))
+                n = seen.get(src, 0)
+                seen[src] = n + 1
+                if n == 0:
+                    return m.group(0)
+                return u'refLocalId="%d"' % self._clone(src, {})
+            out_els.append(re.sub(u'refLocalId="(\d+)"', repl, e))
+        return u"<FBD>" + u"".join(out_els) + u"</FBD>"
 
 
 # ==================================================================== декларации
@@ -299,7 +346,6 @@ def vartype(t):
     """
     t = str(t).strip()
     if t.startswith("ARRAY"):
-        import re
         m = re.match(r"ARRAY\s*\[([^\]]+)\]\s*OF\s*(\w+)", t, re.I)
         if not m:
             raise ValueError(u"не разобран тип: %s" % t)
