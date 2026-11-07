@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0200">
+<fileHeader companyName="" productName="CODESYS" productVersion="CODESYS V3.5 SP17 Patch 3" creationDateTime="2026-01-01T00:00:00" />
+<contentHeader name="Emu6502">
+<coordinateInfo>
+<fbd><scaling x="1" y="1" /></fbd><ld><scaling x="1" y="1" /></ld><sfc><scaling x="1" y="1" /></sfc>
+</coordinateInfo>
+</contentHeader>
+<types><dataTypes /><pous>
+<pou name="CALLEE8" pouType="functionBlock">
+<interface><inputVars><variable name="IN"><type><BYTE /></type></variable></inputVars><outputVars><variable name="Q0"><type><BYTE /></type></variable><variable name="Q1"><type><BYTE /></type></variable><variable name="Q2"><type><BYTE /></type></variable><variable name="Q3"><type><BYTE /></type></variable><variable name="Q4"><type><BYTE /></type></variable><variable name="Q5"><type><BYTE /></type></variable><variable name="Q6"><type><BYTE /></type></variable><variable name="Q7"><type><BYTE /></type></variable></outputVars></interface>
+<body>
+<FBD><inVariable localId="1" height="20" width="70"><position x="40" y="40" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>IN</expression></inVariable><outVariable localId="2" height="20" width="70"><position x="560" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn><expression>Q0</expression></outVariable><outVariable localId="3" height="20" width="70"><position x="560" y="80" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn><expression>Q1</expression></outVariable><outVariable localId="4" height="20" width="70"><position x="560" y="120" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn><expression>Q2</expression></outVariable><outVariable localId="5" height="20" width="70"><position x="560" y="160" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn><expression>Q3</expression></outVariable><outVariable localId="6" height="20" width="70"><position x="560" y="200" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn><expression>Q4</expression></outVariable><outVariable localId="7" height="20" width="70"><position x="560" y="240" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn><expression>Q5</expression></outVariable><outVariable localId="8" height="20" width="70"><position x="560" y="280" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn><expression>Q6</expression></outVariable><outVariable localId="9" height="20" width="70"><position x="560" y="320" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn><expression>Q7</expression></outVariable></FBD>
+</body>
+<addData />
+</pou>
+</pous></types>
+<instances><configurations /></instances>
+</project>

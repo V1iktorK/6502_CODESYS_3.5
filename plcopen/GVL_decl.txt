@@ -1,0 +1,9 @@
+VAR_GLOBAL
+	A : BYTE;
+	X : BYTE;
+	Y : BYTE;
+	P : BYTE;
+	SP : BYTE;
+	PC : WORD;
+	Halted : BOOL;
+END_VAR

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0200">
+<fileHeader companyName="" productName="CODESYS" productVersion="CODESYS V3.5 SP17 Patch 3" creationDateTime="2026-01-01T00:00:00" />
+<contentHeader name="Emu6502">
+<coordinateInfo>
+<fbd><scaling x="1" y="1" /></fbd><ld><scaling x="1" y="1" /></ld><sfc><scaling x="1" y="1" /></sfc>
+</coordinateInfo>
+</contentHeader>
+<types><dataTypes /><pous>
+<pou name="C_MANY_OUTS" pouType="functionBlock">
+<interface><inputVars><variable name="IN"><type><BYTE /></type></variable></inputVars><outputVars><variable name="O0"><type><BYTE /></type></variable><variable name="O1"><type><BYTE /></type></variable><variable name="O2"><type><BYTE /></type></variable><variable name="O3"><type><BYTE /></type></variable><variable name="O4"><type><BYTE /></type></variable><variable name="O5"><type><BYTE /></type></variable><variable name="O6"><type><BYTE /></type></variable><variable name="O7"><type><BYTE /></type></variable></outputVars><localVars><variable name="Inst"><type><derived name="CALLEE8" /></type></variable></localVars></interface>
+<body>
+<FBD><inVariable localId="20" height="20" width="70"><position x="40" y="40" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>IN</expression></inVariable><block localId="21" typeName="CALLEE8" instanceName="Inst" height="20" width="80" executionOrderId="1"><position x="300" y="40" /><inputVariables><variable formalParameter="IN"><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="20" /></connectionPointIn></variable></inputVariables><inOutVariables /><outputVariables><variable formalParameter="OUT"><connectionPointOut><relPosition x="80" y="10" /></connectionPointOut></variable></outputVariables></block><outVariable localId="22" height="20" width="70"><position x="1080" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="21" formalParameter="Q0" /></connectionPointIn><expression>O0</expression></outVariable><outVariable localId="23" height="20" width="70"><position x="1340" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="21" formalParameter="Q1" /></connectionPointIn><expression>O1</expression></outVariable><outVariable localId="24" height="20" width="70"><position x="1600" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="21" formalParameter="Q2" /></connectionPointIn><expression>O2</expression></outVariable><outVariable localId="25" height="20" width="70"><position x="1860" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="21" formalParameter="Q3" /></connectionPointIn><expression>O3</expression></outVariable><outVariable localId="26" height="20" width="70"><position x="2120" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="21" formalParameter="Q4" /></connectionPointIn><expression>O4</expression></outVariable><outVariable localId="27" height="20" width="70"><position x="2380" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="21" formalParameter="Q5" /></connectionPointIn><expression>O5</expression></outVariable><outVariable localId="28" height="20" width="70"><position x="2640" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="21" formalParameter="Q6" /></connectionPointIn><expression>O6</expression></outVariable><outVariable localId="29" height="20" width="70"><position x="2900" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="21" formalParameter="Q7" /></connectionPointIn><expression>O7</expression></outVariable></FBD>
+</body>
+<addData />
+</pou>
+</pous></types>
+<instances><configurations /></instances>
+</project>

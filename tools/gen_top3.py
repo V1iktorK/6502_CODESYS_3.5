@@ -1,0 +1,326 @@
+# -*- coding: utf-8 -*-
+"""
+gen_top3.py -- KOMPOZICIYA YADRA 6502 (stupeni pishut v GVL_CPU).
+
+Zamena gen_top2.py (tot povredilsya pri pravke). Vse stupeni
+(FB_Fetch, FB_Decoder6502, FB_ALU6502, FB_Flags, FB_WriteBack, SL_*)
+zapisyvayut rezultaty PRYAMO v GVL_CPU i ne imeyut vyhodnyh kontaktov,
+poetomu kompoziciya -- tolko vyzovy s vhodnymi kontaktami.
+
+  FB_CPU_Addr1      A1..A7: SL_C1A, SL_C1B, SL_YW, SL_IND2, SL_INDP,
+                           SL_RELA, SL_RELC, SL_BRK
+  FB_CPU_Select     Pick (SL_SELECT12), Wd (SL_WDATA2)
+  FB_CPU_Stack      St1..St4, SpSel, Adv, Jr
+  FB_CPU_AluFlags   Alu, Flg, Br
+  FB_CPU_PcWb       Bt, Ps, Wb + zapis registrov A/X/Y/P/SP/PC
+  FB_CPU_Core       Fch, Dec + S1..S5
+  PLC_PRG           Core(Enable := TRUE)
+"""
+import io
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from fbd import Sheet, interface, pou_xml
+import gen_cpu_split as G
+
+ROOT = r"C:\Users\Ольга\OneDrive\Рабочий стол\CODESYS\CPM6502"
+OUT = os.path.join(ROOT, "plcopen")
+CPU = G.CPU
+
+CAND12 = [u"C_IMM", u"C_ZP", u"C_ZPX", u"C_ZPY", u"C_ABS", u"C_ABX",
+          u"C_ABY", u"C_IZX", u"C_IZY", u"C_IND", u"C_REL", u"C_STK"]
+PC_CAND = [u"P_ADV", u"P_EFF", u"P_BACK", u"P_BRN", u"P_KEEP", u"P_JRET", u"P_BRK"]
+
+
+def R(s, name, col=0):
+    """Чтение GVL_CPU.<name>."""
+    return s.ref(CPU + u"." + name, col)
+
+
+def W(s, name, src, col):
+    """Запись GVL_CPU.<name>."""
+    s.assign(CPU + u"." + name, src, col)
+
+
+def call(s, typ, inst, pins, col, w=140):
+    return s.blk(typ, pins, col, width=w, inst=inst)
+
+
+def pouloc(*args):
+    it = iter(args)
+    return list(zip(it, it))
+
+
+def fb_addr1():
+    s = Sheet(u"FB_CPU_Addr1: кандидаты адресов")
+    call(s, u"SL_C1A", u"A1",
+         [(u"OP1", R(s, u"OP1")), (u"X", R(s, u"X")), (u"Y", R(s, u"Y")),
+          (u"PCs", R(s, u"PC"))], 1)
+    call(s, u"SL_C1B", u"A2",
+         [(u"OP1", R(s, u"OP1")), (u"OP2", R(s, u"OP2")),
+          (u"X", R(s, u"X")), (u"Y", R(s, u"Y"))], 3)
+    call(s, u"SL_YW", u"YW1", [(u"Y", R(s, u"Y"))], 5, w=90)
+    call(s, u"SL_IND2", u"A3",
+         [(u"OP1", R(s, u"OP1")), (u"X", R(s, u"X")), (u"Y", R(s, u"Y")),
+          (u"YW", R(s, u"YW"))], 6)
+    call(s, u"SL_INDP", u"A4", [(u"PTR", R(s, u"C_ABS"))], 8, w=100)
+    call(s, u"SL_RELA", u"A5", [(u"OP1", R(s, u"OP1"))], 9, w=100)
+    call(s, u"SL_RELC", u"A6",
+         [(u"OFFW", R(s, u"OFFW")), (u"PC2", R(s, u"PC2"))], 10)
+    call(s, u"SL_BRK", u"A7", [], 12, w=100)
+    W(s, u"C_STK", R(s, u"C_ABS"), 13)
+    W(s, u"P_BRK", R(s, u"BRKV"), 14)
+    return s
+
+
+def fb_select():
+    s = Sheet(u"FB_CPU_Select: эффективный адрес и операнд")
+    call(s, u"SL_SELECT12", u"Pick",
+         [(u"ADDR_MODE", R(s, u"ADDR_MODE"))] +
+         [(n, R(s, n)) for n in CAND12], 1, w=160)
+    call(s, u"SL_WDATA2", u"Wd",
+         [(u"ADDR_MODE", R(s, u"ADDR_MODE")), (u"EFF", R(s, u"EFF")),
+          (u"OP1", R(s, u"OP1"))], 3, w=120)
+    # (SL_WDATA2 dlya imm bеret OP1 -- sm. shapku modulya)
+    W(s, u"P_EFF", R(s, u"EFF"), 4)
+    return s
+
+
+def fb_stack():
+    s = Sheet(u"FB_CPU_Stack: указатель стека и его адреса")
+    call(s, u"SL_STK1", u"St1", [(u"SP", R(s, u"SP"))], 1, w=100)
+    call(s, u"SL_STK3", u"St3", [(u"SP", R(s, u"SP"))], 2, w=100)
+    call(s, u"SL_STK2", u"St2",
+         [(u"SP", R(s, u"SP")), (u"SPM1", R(s, u"SPM1")), (u"SPP1", R(s, u"SPP1")),
+          (u"SPP2", R(s, u"SPP2")), (u"SPP3", R(s, u"SPP3"))], 3)
+    call(s, u"SL_STK4", u"St4", [(u"SPM2", R(s, u"SPM2"))], 5, w=100)
+    call(s, u"SL_SPSEL", u"SpSel",
+         [(u"SP_MODE", R(s, u"SP_MODE")), (u"S_KEEP", R(s, u"SP")),
+          (u"S_P1", R(s, u"SPM1")), (u"S_M1", R(s, u"SPP1")),
+          (u"S_M3", R(s, u"SPM3")), (u"S_P3", R(s, u"SPP3"))], 6, w=150)
+    call(s, u"SL_ADV", u"Adv",
+         [(u"PCs", R(s, u"PC")), (u"LEN", R(s, u"LEN"))], 8, w=100)
+    call(s, u"SL_JRET", u"Jr",
+         [(u"STK_R0", R(s, u"STK_R0")), (u"STK_R1", R(s, u"STK_R1"))], 9, w=110)
+    W(s, u"P_JRET", R(s, u"JRET"), 11)
+    W(s, u"P_ADV", R(s, u"ADV"), 11)
+    W(s, u"P_KEEP", R(s, u"PC"), 11)
+    W(s, u"PULL_LO", s.ref(G.MEM + u".Mem[STK_R0]", 11), 11)
+    return s
+
+
+def fb_aluflags():
+    s = Sheet(u"FB_CPU_AluFlags: АЛУ и регистр признаков")
+    call(s, u"FB_ALU6502", u"Alu",
+         [(u"A", R(s, u"A")), (u"X", R(s, u"X")), (u"P", R(s, u"P")),
+          (u"WDATA", R(s, u"WDATA")), (u"ALU_A", R(s, u"ALU_A")),
+          (u"ALU_B", R(s, u"ALU_B")), (u"F_SUB", R(s, u"F_SUB")),
+          (u"F_CMP", R(s, u"F_CMP")), (u"USE_CARRY", R(s, u"USE_CARRY"))],
+         1, w=140)
+    call(s, u"FB_Flags", u"Flg",
+         [(u"P", R(s, u"P"))] +
+         [(n, R(s, n)) for n in
+          (u"SET_NZ", u"SET_C", u"SET_V", u"SET_B", u"CMD_CLC", u"CMD_SEC",
+           u"CMD_SEI", u"CMD_CLI", u"F_SUB", u"N_F", u"Z_F", u"V_ADD",
+           u"V_SUB", u"CARRY")], 3, w=130)
+    call(s, u"SL_BRNE", u"Br",
+         [(u"COND", R(s, u"COND")), (u"FZ", R(s, u"FZ")), (u"FC", R(s, u"FC"))],
+         5, w=110)
+    return s
+
+
+def fb_pcwb():
+    s = Sheet(u"FB_CPU_PcWb: новый PC и запись регистров")
+    call(s, u"SL_BRN2", u"Bt",
+         [(u"PC2", R(s, u"PC2")), (u"C_REL", R(s, u"C_REL")),
+          (u"TAKE", R(s, u"TAKE"))], 1, w=110)
+    call(s, u"SL_PCSEL", u"Ps",
+         [(u"PC_MODE", R(s, u"PC_MODE"))] + [(n, R(s, n)) for n in PC_CAND],
+         2, w=150)
+    call(s, u"FB_WriteBack", u"Wb",
+         [(u"SRC", R(s, u"SRC")), (u"A", R(s, u"A")), (u"X", R(s, u"X")),
+          (u"Y", R(s, u"Y")), (u"P_NEW", R(s, u"P_NEW")),
+          (u"ALU_R", R(s, u"ALU_R")), (u"PCL", R(s, u"PCL")),
+          (u"PCH", R(s, u"PCH")), (u"PULL_LO", R(s, u"PULL_LO")),
+          (u"SP_NEW", R(s, u"SP_NEW")), (u"PC_NEW", R(s, u"PC_NEW")),
+          (u"Enable", R(s, u"Enable"))] +
+         [(n, R(s, n)) for n in
+          (u"LD_A_E", u"LD_X_E", u"LD_Y_E", u"LD_P_E", u"LD_SP_E")],
+         4, w=150)
+    # Запись регистров вынесена в отдельный POU FB_RegFile:
+    # по конспекту (2.5) чтение ячейки в той же сети, где она
+    # пишется, даёт старое значение.
+    return s
+
+
+def fb_store():
+    """FB_CPU_Store: tri porta zapisi v pamyat.
+
+    Port 0 -- obychaya zapis (STA/STX/STY) ili pervyy bajt steka (BRK).
+    Porty 1 i 2 -- vtoryy/tretiy bajty dlya JSR (PCH, PCL) i BRK (PCH, PCL).
+    """
+    s = Sheet(u"FB_CPU_Store: запись в память")
+    push1 = s.blk(u"EQ", [(u"IN1", R(s, u"SP_MODE")), (u"IN2", s.const(u"BYTE#1", 1))], 1)
+    push3 = s.blk(u"EQ", [(u"IN1", R(s, u"SP_MODE")), (u"IN2", s.const(u"BYTE#5", 1))], 1)
+    stack_w = s.blk(u"OR", [(u"IN1", push1), (u"IN2", push3)], 2)
+
+    # --- port 0
+    en0 = s.blk(u"OR", [(u"IN1", R(s, u"WR_MEM_E")),
+                        (u"IN2", s.blk(u"OR", [(u"IN1", R(s, u"IS_JSR")),
+                                               (u"IN2", stack_w)], 3))], 4)
+    W(s, u"WR0", s.blk(u"SEL", [(u"G", stack_w), (u"IN0", R(s, u"EFF")),
+                                (u"IN1", R(s, u"STK_A0"))], 4), 5)
+    W(s, u"WRD0", s.blk(u"SEL", [(u"G", push3), (u"IN0", R(s, u"REG_WR")),
+                                 (u"IN1", R(s, u"P_NEW"))], 5), 6)
+    W(s, u"WR_EN0", en0, 6)
+    s.assign(u"GVL_MEM.Mem[GVL_CPU.WR0]",
+             s.blk(u"SEL", [(u"G", R(s, u"WR_EN0")),
+                            (u"IN0", s.ref(u"GVL_MEM.Mem[GVL_CPU.WR0]", 7)),
+                            (u"IN1", R(s, u"WRD0"))], 7), 8)
+
+    # --- port 1 (JSR: PCH, BRK: PCH)
+    en1 = s.blk(u"OR", [(u"IN1", R(s, u"IS_JSR")), (u"IN2", push3)], 4)
+    W(s, u"WR1", R(s, u"STK_A1"), 5)
+    W(s, u"WRD1", R(s, u"PCH"), 6)
+    W(s, u"WR_EN1", en1, 6)
+    s.assign(u"GVL_MEM.Mem[GVL_CPU.WR1]",
+             s.blk(u"SEL", [(u"G", R(s, u"WR_EN1")),
+                            (u"IN0", s.ref(u"GVL_MEM.Mem[GVL_CPU.WR1]", 7)),
+                            (u"IN1", R(s, u"WRD1"))], 7), 8)
+
+    # --- port 2 (JSR: PCL, BRK: PCL)
+    W(s, u"WR2", R(s, u"STK_A2"), 5)
+    W(s, u"WRD2", R(s, u"PCL"), 6)
+    W(s, u"WR_EN2", push3, 6)
+    s.assign(u"GVL_MEM.Mem[GVL_CPU.WR2]",
+             s.blk(u"SEL", [(u"G", R(s, u"WR_EN2")),
+                            (u"IN0", s.ref(u"GVL_MEM.Mem[GVL_CPU.WR2]", 7)),
+                            (u"IN1", R(s, u"WRD2"))], 7), 8)
+    return s
+
+
+def fb_regfile():
+    """FB_RegFile: запись A, X, Y, P, SP, PC.
+
+    По конспекту: (2.2) связь "выход вызова FB -> вход блока" теряется,
+    поэтому никаких проводов -- только чтение GVL (его записали другие POU
+    в этом же скане) и один outvar на регистр (2.5: без промежуточных
+    переменных, чтобы не читать ячейку в той же сети, где пишем).
+    """
+    s = Sheet(u"FB_RegFile: запись регистров")
+    W(s, u"A", s.blk(u"SEL", [(u"G", R(s, u"LD_A_E")), (u"IN0", R(s, u"REG_WR")), (u"IN1", R(s, u"A"))], 1), 2)
+    W(s, u"X", s.blk(u"SEL", [(u"G", R(s, u"LD_X_E")), (u"IN0", R(s, u"REG_WR")), (u"IN1", R(s, u"X"))], 3), 4)
+    W(s, u"Y", s.blk(u"SEL", [(u"G", R(s, u"LD_Y_E")), (u"IN0", R(s, u"REG_WR")), (u"IN1", R(s, u"Y"))], 5), 6)
+    W(s, u"P", s.blk(u"SEL", [(u"G", R(s, u"LD_P_E")), (u"IN0", R(s, u"REG_WR")), (u"IN1", R(s, u"P_NEW"))], 7), 8)
+    W(s, u"SP", s.blk(u"SEL", [(u"G", R(s, u"LD_SP_E")), (u"IN0", R(s, u"SP_NEW")), (u"IN1", R(s, u"SP"))], 9), 10)
+    W(s, u"PC", s.blk(u"SEL", [(u"G", s.const(u"TRUE", 11)), (u"IN0", R(s, u"PC_NEW")), (u"IN1", R(s, u"PC"))], 11), 12)
+    return s
+
+
+def fb_core():
+    s = Sheet(u"FB_CPU_Core: один такт MOS 6502")
+    W(s, u"Enable", s.ref(u"Enable", 0), 1)      # проброс разрешения такта в GVL
+    call(s, u"FB_Fetch", u"Fch", [(u"PCs", R(s, u"PC"))], 2, w=110)
+    call(s, u"FB_Decoder6502", u"Dec", [(u"Op", R(s, u"OPs"))], 3, w=170)
+    # Байтовые сигналы — из таблицы декодирования (данные в GVL_TABLE)
+    for sig in (u"ADDR_MODE", u"LEN", u"SRC", u"ALU_A", u"ALU_B",
+                u"PC_MODE", u"SP_MODE", u"COND"):
+        W(s, sig, s.ref(u"GVL_TABLE.%s[GVL_CPU.OPs]" % sig, 4), 4)
+
+    # Разрешения такта: сигнал И Enable (без этого регистры не пишутся)
+    for sig in (u"LD_A", u"LD_X", u"LD_Y", u"LD_P", u"LD_SP", u"WR_MEM"):
+        W(s, sig + u"_E",
+          s.blk(u"AND", [(u"IN1", R(s, sig)), (u"IN2", R(s, u"Enable"))], 4), 4)
+    call(s, u"FB_CPU_Addr1", u"S1", [], 5, w=140)
+    call(s, u"FB_CPU_Select", u"S2", [], 6, w=140)
+    call(s, u"FB_CPU_Stack", u"S3", [], 7, w=140)
+    call(s, u"FB_CPU_AluFlags", u"S4", [], 8, w=140)
+    call(s, u"FB_CPU_PcWb", u"S5", [], 9, w=140)
+    call(s, u"FB_CPU_Store", u"S6", [], 10, w=140)
+    call(s, u"FB_RegFile", u"S7", [], 11, w=140)
+    W(s, u"Done", R(s, u"Enable"), 11)
+    return s
+
+
+def prg():
+    s = Sheet(u"PLC_PRG: один такт процессора за скан задачи")
+    s.add_comment(u"Каждый скан задачи выполняется ровно одна команда MOS 6502")
+    call(s, u"FB_CPU_Core", u"Core", [(u"Enable", s.const(u"TRUE", 0))], 2, w=140)
+    return s
+
+
+def write(name, xml):
+    p = os.path.join(OUT, u"%s.xml" % name)
+    f = io.open(p, "wb")
+    f.write(xml.encode("utf-8"))
+    f.close()
+    print(u"  %-16s %8d байт" % (name, os.path.getsize(p)))
+
+
+def main():
+    print(u"=== gen_top3 ===")
+
+    write(u"FB_CPU_Addr1", pou_xml(
+        u"FB_CPU_Addr1", u"functionBlock",
+        interface(locals_=pouloc(u"A1", u"SL_C1A", u"A2", u"SL_C1B", u"YW1", u"SL_YW",
+                                 u"A3", u"SL_IND2", u"A4", u"SL_INDP", u"A5", u"SL_RELA",
+                                 u"A6", u"SL_RELC", u"A7", u"SL_BRK")),
+        [fb_addr1()], u"кандидаты адресов"))
+
+    write(u"FB_CPU_Select", pou_xml(
+        u"FB_CPU_Select", u"functionBlock",
+        interface(locals_=pouloc(u"Pick", u"SL_SELECT12", u"Wd", u"SL_WDATA2")),
+        [fb_select()], u"выбор адреса"))
+
+    write(u"FB_CPU_Stack", pou_xml(
+        u"FB_CPU_Stack", u"functionBlock",
+        interface(locals_=pouloc(u"St1", u"SL_STK1", u"St2", u"SL_STK2",
+                                 u"St3", u"SL_STK3", u"St4", u"SL_STK4",
+                                 u"SpSel", u"SL_SPSEL", u"Adv", u"SL_ADV",
+                                 u"Jr", u"SL_JRET")),
+        [fb_stack()], u"стек"))
+
+    write(u"FB_CPU_AluFlags", pou_xml(
+        u"FB_CPU_AluFlags", u"functionBlock",
+        interface(locals_=pouloc(u"Alu", u"FB_ALU6502", u"Flg", u"FB_Flags",
+                                 u"Br", u"SL_BRNE")),
+        [fb_aluflags()], u"АЛУ и флаги"))
+
+    write(u"FB_CPU_PcWb", pou_xml(
+        u"FB_CPU_PcWb", u"functionBlock",
+        interface(locals_=pouloc(u"Bt", u"SL_BRN2", u"Ps", u"SL_PCSEL",
+                                 u"Wb", u"FB_WriteBack") +
+                  [(u"N_A", u"BYTE"), (u"N_X", u"BYTE"), (u"N_Y", u"BYTE"),
+                   (u"N_P", u"BYTE"), (u"N_SP", u"BYTE"), (u"N_PC", u"WORD")]),
+        [fb_pcwb()], u"PC и запись"))
+
+    write(u"FB_CPU_Core", pou_xml(
+        u"FB_CPU_Core", u"functionBlock",
+        interface(inputs=[(u"Enable", u"BOOL")],
+                  locals_=pouloc(u"Fch", u"FB_Fetch", u"Dec", u"FB_Decoder6502",
+                                 u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
+                                 u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
+                                 u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S7", u"FB_RegFile")),
+        [fb_core()], u"такт"))
+
+    write(u"FB_CPU_Store", pou_xml(
+        u"FB_CPU_Store", u"functionBlock",
+        interface(locals_=[]),
+        [fb_store()], u"запись в память"))
+
+    write(u"FB_RegFile", pou_xml(
+        u"FB_RegFile", u"functionBlock",
+        interface(locals_=[]),
+        [fb_regfile()], u"запись регистров"))
+
+    write(u"PRG_PLC", pou_xml(
+        u"PLC_PRG", u"program",
+        interface(locals_=[(u"Core", u"FB_CPU_Core")]),
+        [prg()], u"точка входа задачи"))
+    print(u"готово")
+
+
+if __name__ == "__main__":
+    main()

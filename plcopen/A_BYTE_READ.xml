@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0200">
+<fileHeader companyName="" productName="CODESYS" productVersion="CODESYS V3.5 SP17 Patch 3" creationDateTime="2026-01-01T00:00:00" />
+<contentHeader name="Emu6502">
+<coordinateInfo>
+<fbd><scaling x="1" y="1" /></fbd><ld><scaling x="1" y="1" /></ld><sfc><scaling x="1" y="1" /></sfc>
+</coordinateInfo>
+</contentHeader>
+<types><dataTypes /><pous>
+<pou name="A_BYTE_READ" pouType="program">
+<interface><localVars><variable name="B1"><type><BYTE /></type></variable><variable name="ARB"><type><array><dimension lower="0" upper="7" /><baseType><BYTE /></baseType></array></type></variable></localVars></interface>
+<body>
+<FBD><comment localId="12" height="30" width="240"><position x="40" y="0" /><content><xhtml xmlns="http://www.w3.org/1999/xhtml">probe</xhtml></content></comment><inVariable localId="10" height="20" width="70"><position x="40" y="40" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>ARB[3]</expression></inVariable><outVariable localId="11" height="20" width="70"><position x="300" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="10" /></connectionPointIn><expression>B1</expression></outVariable></FBD>
+</body>
+<addData />
+</pou>
+</pous></types>
+<instances><configurations /></instances>
+</project>

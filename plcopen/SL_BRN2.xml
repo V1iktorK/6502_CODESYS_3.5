@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0200">
+<fileHeader companyName="" productName="CODESYS" productVersion="CODESYS V3.5 SP17 Patch 3" creationDateTime="2026-01-01T00:00:00" />
+<contentHeader name="Emu6502">
+<coordinateInfo>
+<fbd><scaling x="1" y="1" /></fbd><ld><scaling x="1" y="1" /></ld><sfc><scaling x="1" y="1" /></sfc>
+</coordinateInfo>
+</contentHeader>
+<types><dataTypes /><pous>
+<pou name="SL_BRN2" pouType="functionBlock">
+<interface><inputVars><variable name="PC2"><type><WORD /></type></variable><variable name="C_REL"><type><WORD /></type></variable><variable name="TAKE"><type><BOOL /></type></variable></inputVars></interface>
+<body>
+<FBD><comment localId="116" height="30" width="240"><position x="40" y="0" /><content><xhtml xmlns="http://www.w3.org/1999/xhtml">цель перехода</xhtml></content></comment><inVariable localId="111" height="20" width="70"><position x="40" y="40" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>PC2</expression></inVariable><inVariable localId="112" height="20" width="70"><position x="40" y="80" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>C_REL</expression></inVariable><inVariable localId="113" height="20" width="70"><position x="40" y="120" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>TAKE</expression></inVariable><block localId="114" typeName="SEL" height="60" width="80" executionOrderId="1"><position x="560" y="40" /><inputVariables><variable formalParameter="G"><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="113" /></connectionPointIn></variable><variable formalParameter="IN0"><connectionPointIn><relPosition x="0" y="30" /><connection refLocalId="112" /></connectionPointIn></variable><variable formalParameter="IN1"><connectionPointIn><relPosition x="0" y="50" /><connection refLocalId="111" /></connectionPointIn></variable></inputVariables><inOutVariables /><outputVariables><variable formalParameter="OUT"><connectionPointOut><relPosition x="80" y="30" /></connectionPointOut></variable></outputVariables></block><outVariable localId="115" height="20" width="70"><position x="1080" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="114" /></connectionPointIn><expression>GVL_CPU.BRN_TGT</expression></outVariable></FBD>
+</body>
+<addData />
+</pou>
+</pous></types>
+<instances><configurations /></instances>
+</project>

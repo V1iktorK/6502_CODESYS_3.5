@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0200">
+<fileHeader companyName="" productName="CODESYS" productVersion="CODESYS V3.5 SP17 Patch 3" creationDateTime="2026-01-01T00:00:00" />
+<contentHeader name="Emu6502">
+<coordinateInfo>
+<fbd><scaling x="1" y="1" /></fbd><ld><scaling x="1" y="1" /></ld><sfc><scaling x="1" y="1" /></sfc>
+</coordinateInfo>
+</contentHeader>
+<types><dataTypes /><pous>
+<pou name="J0_CTRL" pouType="functionBlock">
+<interface><outputVars><variable name="Out"><type><WORD /></type></variable></outputVars><localVars><variable name="W1"><type><WORD /></type></variable><variable name="W2"><type><WORD /></type></variable><variable name="W3"><type><WORD /></type></variable><variable name="B1"><type><BYTE /></type></variable><variable name="B2"><type><BYTE /></type></variable><variable name="B3"><type><BYTE /></type></variable></localVars></interface>
+<body>
+<FBD><comment localId="4" height="30" width="240"><position x="40" y="0" /><content><xhtml xmlns="http://www.w3.org/1999/xhtml">probe</xhtml></content></comment><inVariable localId="1" height="20" width="70"><position x="40" y="40" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>B2</expression></inVariable><block localId="2" typeName="BYTE_TO_WORD" height="20" width="140" executionOrderId="1"><position x="300" y="40" /><inputVariables><variable formalParameter="IN"><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn></variable></inputVariables><inOutVariables /><outputVariables><variable formalParameter="OUT"><connectionPointOut><relPosition x="140" y="10" /></connectionPointOut></variable></outputVariables></block><outVariable localId="3" height="20" width="70"><position x="560" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="2" /></connectionPointIn><expression>W1</expression></outVariable></FBD>
+</body>
+<addData />
+</pou>
+</pous></types>
+<instances><configurations /></instances>
+</project>

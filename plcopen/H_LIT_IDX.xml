@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0200">
+<fileHeader companyName="" productName="CODESYS" productVersion="CODESYS V3.5 SP17 Patch 3" creationDateTime="2026-01-01T00:00:00" />
+<contentHeader name="Emu6502">
+<coordinateInfo>
+<fbd><scaling x="1" y="1" /></fbd><ld><scaling x="1" y="1" /></ld><sfc><scaling x="1" y="1" /></sfc>
+</coordinateInfo>
+</contentHeader>
+<types><dataTypes /><pous>
+<pou name="H_LIT_IDX" pouType="program">
+<interface><localVars><variable name="W1"><type><WORD /></type></variable><variable name="W2"><type><WORD /></type></variable><variable name="B1"><type><BYTE /></type></variable><variable name="B2"><type><BYTE /></type></variable><variable name="G1"><type><BOOL /></type></variable></localVars></interface>
+<body>
+<FBD><comment localId="15" height="30" width="240"><position x="40" y="0" /><content><xhtml xmlns="http://www.w3.org/1999/xhtml">probe</xhtml></content></comment><inVariable localId="13" height="20" width="153"><position x="40" y="40" /><connectionPointOut><relPosition x="153" y="10" /></connectionPointOut><expression>Mem[WORD#16#FFFE]</expression></inVariable><outVariable localId="14" height="20" width="70"><position x="300" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="13" /></connectionPointIn><expression>B1</expression></outVariable></FBD>
+</body>
+<addData />
+</pou>
+</pous></types>
+<instances><configurations /></instances>
+</project>

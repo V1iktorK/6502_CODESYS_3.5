@@ -1,0 +1,8 @@
+# артефакты CODESYS и логи не храним
+build/*.opt
+build/*.precompilecache
+log/*.log
+log/*.txt
+*.~*
+*_out.txt
+*_err.txt

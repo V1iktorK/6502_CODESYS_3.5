@@ -1,0 +1,7 @@
+VAR_GLOBAL
+	(* Общие шины (ТЗ): одна шина данных и одна шина адреса *)
+	Bus_Data : BYTE;
+	Bus_Addr : WORD;
+	Bus_WE : BOOL;
+	Bus_RE : BOOL;
+END_VAR

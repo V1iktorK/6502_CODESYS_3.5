@@ -1,0 +1,14 @@
+VAR_GLOBAL
+	(* Окно $F000-$F0FF: регистры ввода-вывода *)
+	Io_In : BYTE;      (* $F000: дискретные входы DI0..DI7 *)
+	Io_Out : BYTE;     (* $F001: дискретные выходы DO0..DO7 *)
+	Ai0 : WORD;        (* $F002-$F003: аналоговый вход, little-endian *)
+	Ao0 : WORD;        (* $F004-$F005: аналоговый выход, little-endian *)
+	IrqMask : BYTE;    (* $F006: маска разрешения IRQ по DI *)
+	Latch : BYTE;      (* $F007: флаг фронта, сбрасывается чтением *)
+	Tick : BYTE;       (* $F008: счётчик тактов PLC *)
+	GVL_AIL : BYTE;
+	GVL_AIH : BYTE;
+	GVL_AOL : BYTE;
+	GVL_AOH : BYTE;
+END_VAR

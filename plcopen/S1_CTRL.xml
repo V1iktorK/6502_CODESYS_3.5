@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0200">
+<fileHeader companyName="" productName="CODESYS" productVersion="CODESYS V3.5 SP17 Patch 3" creationDateTime="2026-01-01T00:00:00" />
+<contentHeader name="Emu6502">
+<coordinateInfo>
+<fbd><scaling x="1" y="1" /></fbd><ld><scaling x="1" y="1" /></ld><sfc><scaling x="1" y="1" /></sfc>
+</coordinateInfo>
+</contentHeader>
+<types><dataTypes /><pous>
+<pou name="S1_CTRL" pouType="program">
+<interface><localVars><variable name="W1"><type><WORD /></type></variable><variable name="W2"><type><WORD /></type></variable><variable name="W3"><type><WORD /></type></variable><variable name="W4"><type><WORD /></type></variable><variable name="W5"><type><WORD /></type></variable><variable name="W6"><type><WORD /></type></variable><variable name="W7"><type><WORD /></type></variable><variable name="B2"><type><BYTE /></type></variable><variable name="B3"><type><BYTE /></type></variable></localVars></interface>
+<body>
+<FBD><comment localId="5" height="30" width="240"><position x="40" y="0" /><content><xhtml xmlns="http://www.w3.org/1999/xhtml">probe</xhtml></content></comment><inVariable localId="1" height="20" width="70"><position x="40" y="40" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>W2</expression></inVariable><inVariable localId="2" height="20" width="70"><position x="40" y="80" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>W3</expression></inVariable><block localId="3" typeName="ADD" height="40" width="80" executionOrderId="1"><position x="300" y="40" /><inputVariables><variable formalParameter="IN1"><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="1" /></connectionPointIn></variable><variable formalParameter="IN2"><connectionPointIn><relPosition x="0" y="30" /><connection refLocalId="2" /></connectionPointIn></variable></inputVariables><inOutVariables /><outputVariables><variable formalParameter="OUT"><connectionPointOut><relPosition x="80" y="20" /></connectionPointOut></variable></outputVariables></block><outVariable localId="4" height="20" width="70"><position x="560" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="3" /></connectionPointIn><expression>W1</expression></outVariable></FBD>
+</body>
+<addData />
+</pou>
+</pous></types>
+<instances><configurations /></instances>
+</project>
