@@ -93,22 +93,24 @@ if oa is not None:
     except Exception:
         log(u"ошибка записи: %s" % traceback.format_exc().strip().splitlines()[-1])
 
-    # контроль: приживается ли запись PC
-    try:
-        log(u"  сразу после записи: PC=%s A=%s" % (oa.read_value(u"GVL_CPU.PC"),
-                                                   oa.read_value(u"GVL_CPU.A")))
-    except Exception:
-        log(u"  чтение сразу: ошибка")
+    # быстрый поскановый след: ловим первые такты
     try:
         import time
-        for i in range(6):
-            time.sleep(0.05)
-            log(u"  шаг %d: PC=%s A=%s OPs=%s LD_A_E=%s"
-                % (i, oa.read_value(u"GVL_CPU.PC"), oa.read_value(u"GVL_CPU.A"),
-                   oa.read_value(u"GVL_CPU.OPs"), oa.read_value(u"GVL_CPU.LD_A_E")))
+        prev = None
+        for k in range(60):
+            try:
+                pc = oa.read_value(u"GVL_CPU.PC")
+                op = oa.read_value(u"GVL_CPU.PC_MODE")
+                a = oa.read_value(u"GVL_CPU.P_ADV")
+            except Exception:
+                break
+            cur = (str(pc), str(op), str(a))
+            if cur != prev:
+                log(u"  такт %2d: PC=%s PC_MODE=%s P_ADV=%s" % (k, pc, op, a))
+                prev = cur
+            time.sleep(0.02)
     except Exception:
         pass
-
     log(u"")
     log(u"--- состояние ---")
     res = {}

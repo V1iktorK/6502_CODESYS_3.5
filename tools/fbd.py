@@ -238,6 +238,17 @@ class Sheet(object):
             self._order += 1
         buf.append(u'>')
         buf.append(u'<position x="%d" y="%d" />' % (self.x(col), y))
+        # ВАЖНО: у CODESYS SEL(G, IN0, IN1) при G=TRUE выбирается IN1, а не IN0
+        # (проверено экспериментом: SEL(FALSE,9,$42)=9, SEL(TRUE,7,3)=3).
+        # Наш код везде написан в соглашении "при G истинно -- ПЕРВЫЙ источник",
+        # поэтому здесь меняем местами значения IN0 и IN1.
+        if type_name == u"SEL" and len(pins) == 3:
+            _p = list(pins)
+            _src = dict(_p)
+            if u"IN0" in _src and u"IN1" in _src:
+                _p = [(n, (_src[u"IN1"] if n == u"IN0" else (_src[u"IN0"] if n == u"IN1" else s_)))
+                      for n, s_ in _p]
+            pins = _p
         buf.append(u'<inputVariables>')
         for n, (pin, src) in enumerate(pins):
             buf.append(u'<variable formalParameter="%s">' % esc(pin))
