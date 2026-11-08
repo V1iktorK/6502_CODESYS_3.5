@@ -215,7 +215,11 @@ def fb_store():
     s = Sheet(u"FB_CPU_Store: запись в память")
     push1 = s.blk(u"EQ", [(u"IN1", R(s, u"SP_MODE")), (u"IN2", s.const(u"BYTE#1", 1))], 1)
     push3 = s.blk(u"EQ", [(u"IN1", R(s, u"SP_MODE")), (u"IN2", s.const(u"BYTE#5", 1))], 1)
-    stack_w = s.blk(u"OR", [(u"IN1", push1), (u"IN2", push3)], 2)
+    # JSR (SP_MODE=3, push2) тоже пишет в стек: раньше это условие не входило,
+    # и адрес порта 0 брался как EFF (адрес операнда) вместо $0100+SP.
+    push2 = s.blk(u"EQ", [(u"IN1", R(s, u"SP_MODE")), (u"IN2", s.const(u"BYTE#3", 1))], 1)
+    stack_w = s.blk(u"OR", [(u"IN1", push1),
+                        (u"IN2", s.blk(u"OR", [(u"IN1", push2), (u"IN2", push3)], 2))], 2)
 
     # --- port 0
     en0 = s.blk(u"AND", [(u"IN1", R(s, u"Enable")),

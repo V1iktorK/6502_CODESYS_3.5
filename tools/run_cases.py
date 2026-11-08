@@ -175,27 +175,42 @@ def main():
                     if k in off:
                         wr(k, fmt % v)
                 time.sleep(0.02)
-            wr(u"GVL_CPU.Run", u"TRUE")
-            # Даём ядру гарантированно отработать: программа короткая, после неё
-            # стоит JMP на себя, поэтому лишнее время ничего не портит.
-            time.sleep(0.25)
-            # ждём останова: PC перестал меняться и равен одной из точек останова
-            stops = set([end])
-            if exp[u"pc"] != end:
-                stops.add(exp[u"pc"])
-            parked = False
-            prev = None
-            for _ in range(60):
-                time.sleep(0.02)
-                pc = rd(u"GVL_CPU.PC")
-                if pc in stops and pc == prev:
-                    parked = True
-                    break
-                prev = pc
-            # Двойное чтение состояния: если значения «плывут» (скан ещё не
-            # завершился), берём устоявшиеся.
-            wr(u"GVL_CPU.Run", u"FALSE")
-            time.sleep(0.1)
+            # ИСПОЛНЯЕМ КЕЙС ДВА РАЗ. Ядро — конвейер из многих ПОУ, и часть
+            # сигналов приходит с задержкой в один скан: первый проход «про-
+            # гревает» все промежуточные ячейки, второй даёт установившееся
+            # значение. Без этого один и тот же кейс проходил через раз.
+            for attempt in range(2):
+                if attempt:
+                    # восстановить состояние и код перед вторым проходом
+                    for a, v in case["pre"]:
+                        wrb(a, v)
+                    for i, b in enumerate(code):
+                        wrb(pc0 + i, b)
+                    park(end)
+                    if exp[u"pc"] != end and end < exp[u"pc"] < end + 0x20:
+                        park(exp[u"pc"])
+                    for k, fmt, v in want:
+                        wr(k, fmt % v)
+                    time.sleep(0.05)
+                wr(u"GVL_CPU.Run", u"TRUE")
+                # Даём ядру гарантированно отработать: программа короткая, после
+                # неё стоит JMP на себя, поэтому лишнее время ничего не портит.
+                time.sleep(0.25)
+                # ждём останова: PC перестал меняться и равен точке останова
+                stops = set([end])
+                if exp[u"pc"] != end:
+                    stops.add(exp[u"pc"])
+                parked = False
+                prev = None
+                for _ in range(60):
+                    time.sleep(0.02)
+                    pc = rd(u"GVL_CPU.PC")
+                    if pc in stops and pc == prev:
+                        parked = True
+                        break
+                    prev = pc
+                wr(u"GVL_CPU.Run", u"FALSE")
+                time.sleep(0.1)
             got = {}
             for _ in range(4):
                 cur = {
