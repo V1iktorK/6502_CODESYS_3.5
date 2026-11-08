@@ -97,7 +97,13 @@ def main():
         wr(u"GVL_MEM.Mem[%d]" % addr, u"16#%02X" % (val & 0xFF))
 
     def rd(expr):
-        v = u"%s" % oa.read_value(expr)
+        # CODESYS иногда отвечает исключением на чтение выражения (например,
+        # сразу после переименования/удаления объекта). Тогда считаем, что
+        # значения нет, а не роняем весь прогон.
+        try:
+            v = u"%s" % oa.read_value(expr)
+        except Exception:
+            return None
         try:
             if u"16#" in v:
                 return int(v.split(u"16#")[-1], 16)
@@ -186,13 +192,21 @@ def main():
                     parked = True
                     break
                 prev = pc
+            # Двойное чтение состояния: если значения «плывут» (скан ещё не
+            # завершился), берём устоявшиеся.
             wr(u"GVL_CPU.Run", u"FALSE")
             time.sleep(0.1)
-            got = {
-                u"a": rd(u"GVL_CPU.A"), u"x": rd(u"GVL_CPU.X"),
-                u"y": rd(u"GVL_CPU.Y"), u"p": rd(u"GVL_CPU.P"),
-                u"sp": rd(u"GVL_CPU.SP"), u"pc": rd(u"GVL_CPU.PC"),
-            }
+            got = {}
+            for _ in range(4):
+                cur = {
+                    u"a": rd(u"GVL_CPU.A"), u"x": rd(u"GVL_CPU.X"),
+                    u"y": rd(u"GVL_CPU.Y"), u"p": rd(u"GVL_CPU.P"),
+                    u"sp": rd(u"GVL_CPU.SP"), u"pc": rd(u"GVL_CPU.PC"),
+                }
+                if cur == got:
+                    break
+                got = cur
+                time.sleep(0.05)
             bad = []
             for k in (u"a", u"x", u"y", u"p", u"sp", u"pc"):
                 if got.get(k) != exp[k]:
