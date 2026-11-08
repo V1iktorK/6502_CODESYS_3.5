@@ -223,14 +223,16 @@ def fb_store():
                                                                        (u"IN2", stack_w)], 3))], 3))], 4)
     W(s, u"WR0", s.blk(u"SEL", [(u"G", stack_w), (u"IN0", R(s, u"EFF")),
                                 (u"IN1", R(s, u"STK_A0"))], 4), 5)
-    # Данные порта 0: для BRK (push3) -- регистр P, для JSR (push2) -- СТАРШИЙ
-    # байт адреса возврата PCH (он кладётся первым, по адресу SP), иначе --
-    # обычный источник записи SRC. Младший PCL уходит портом 1 (адрес SP-1).
+    # Данные порта 0. ВАЖНО: вложенный SEL внутрь входа SEL CODESYS в этом
+    # проекте не типизирует (конспект 2.8), поэтому выбор разворачивается в
+    # ДВА плоских присваивания через промежуточную ячейку GVL_CPU.STK_D0.
+    # Для BRK (push3) в стек идёт P, для JSR (push2) -- PCH, иначе SRC.
+    W(s, u"STK_D0", s.blk(u"SEL", [(u"G", R(s, u"IS_JSR")),
+                                   (u"IN0", R(s, u"REG_WR")),
+                                   (u"IN1", R(s, u"PCH"))], 5), 6)
     W(s, u"WRD0", s.blk(u"SEL", [(u"G", push3),
-                                 (u"IN0", s.blk(u"SEL", [(u"G", R(s, u"IS_JSR")),
-                                                         (u"IN0", R(s, u"REG_WR")),
-                                                         (u"IN1", R(s, u"PCH"))], 5)),
-                                 (u"IN1", R(s, u"P_NEW"))], 6), 7)
+                                 (u"IN0", R(s, u"STK_D0")),
+                                 (u"IN1", R(s, u"P_NEW"))], 7), 8)
     W(s, u"WR_EN0", en0, 6)
     s.assign(u"GVL_MEM.Mem[GVL_CPU.WR0]",
              s.blk(u"SEL", [(u"G", R(s, u"WR_EN0")),
