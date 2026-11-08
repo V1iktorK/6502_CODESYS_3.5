@@ -67,7 +67,9 @@ GATEV = [(u"LD_A_E", u"BOOL"), (u"LD_X_E", u"BOOL"), (u"LD_Y_E", u"BOOL"),
          (u"FD", u"BOOL"), (u"FI", u"BOOL"),
          (u"WR0", u"WORD"), (u"WR1", u"WORD"), (u"WR2", u"WORD"),
          (u"WRD0", u"BYTE"), (u"WRD1", u"BYTE"), (u"WRD2", u"BYTE"),
-         (u"WR_EN0", u"BOOL"), (u"WR_EN1", u"BOOL"), (u"WR_EN2", u"BOOL")]
+         (u"WR_EN0", u"BOOL"), (u"WR_EN1", u"BOOL"), (u"WR_EN2", u"BOOL"),
+         (u"Chain1", u"BOOL"), (u"Chain2", u"BOOL"), (u"Chain3", u"BOOL"), (u"Chain4", u"BOOL"),
+         (u"Chain5", u"BOOL"), (u"Chain6", u"BOOL"), (u"Chain7", u"BOOL"), (u"Chain8", u"BOOL")]
 
 
 def table_text():

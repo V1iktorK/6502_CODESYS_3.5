@@ -114,14 +114,13 @@ if oa is not None:
     log(u"")
     log(u"--- состояние ---")
     res = {}
-    for expr in (u"GVL_CPU.A", u"GVL_CPU.X", u"GVL_CPU.Y", u"GVL_CPU.P",
-                 u"GVL_CPU.PC", u"GVL_CPU.SP", u"GVL_CPU.OPs",
-                 u"GVL_CPU.ADDR_MODE", u"GVL_CPU.LEN", u"GVL_CPU.SRC",
-                 u"GVL_CPU.PC_MODE", u"GVL_CPU.EFF", u"GVL_CPU.WDATA",
-                 u"GVL_CPU.ALU_R", u"GVL_CPU.P_NEW", u"GVL_CPU.REG_WR", u"GVL_CPU.RW7", u"GVL_CPU.LD_A", u"GVL_CPU.SET_NZ", u"GVL_CPU.ALU_AX",
-                 u"GVL_CPU.LD_A_E", u"GVL_MEM.Mem[512]", u"GVL_MEM.Mem[513]",
-                 u"GVL_MEM.Mem[65534]", u"GVL_MEM.Mem[65535]", u"GVL_CPU.BRKV",
-                 u"GVL_CPU.P_BRK", u"GVL_CPU.PC_NEW"):
+    for expr in (u"GVL_CPU.PC", u"GVL_CPU.SP", u"GVL_CPU.PC_MODE", u"GVL_CPU.SP_MODE",
+                 u"GVL_CPU.BRKV", u"GVL_CPU.P_BRK", u"GVL_CPU.PC_NEW",
+                 u"GVL_CPU.STK_A0", u"GVL_CPU.STK_A1", u"GVL_CPU.STK_A2",
+                 u"GVL_CPU.WR0", u"GVL_CPU.WR1", u"GVL_CPU.WR_EN0", u"GVL_CPU.WRD0",
+                 u"GVL_CPU.SPM1", u"GVL_CPU.SPP1", u"GVL_CPU.SP_NEW",
+                 u"GVL_MEM.Mem[65534]", u"GVL_MEM.Mem[65535]", u"GVL_CPU.Enable",
+                 u"GVL_CPU.A"):
         try:
             v = oa.read_value(expr)
             res[expr] = v

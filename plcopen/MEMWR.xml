@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0200">
+<fileHeader companyName="" productName="CODESYS" productVersion="CODESYS V3.5 SP17 Patch 3" creationDateTime="2026-01-01T00:00:00" />
+<contentHeader name="Emu6502">
+<coordinateInfo>
+<fbd><scaling x="1" y="1" /></fbd><ld><scaling x="1" y="1" /></ld><sfc><scaling x="1" y="1" /></sfc>
+</coordinateInfo>
+</contentHeader>
+<types><dataTypes /><pous>
+<pou name="MEMWR" pouType="functionBlock">
+<interface><inputVars><variable name="ADDR"><type><WORD /></type></variable><variable name="DATA"><type><BYTE /></type></variable></inputVars></interface>
+<body>
+<FBD><comment localId="6" height="30" width="240"><position x="40" y="0" /><content><xhtml xmlns="http://www.w3.org/1999/xhtml">запись в память</xhtml></content></comment><inVariable localId="1" height="20" width="70"><position x="40" y="40" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>ADDR</expression></inVariable><inVariable localId="2" height="20" width="70"><position x="300" y="40" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>DATA</expression></inVariable><outVariable localId="3" height="20" width="153"><position x="560" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="2" /></connectionPointIn><expression>GVL_MEM.Mem[ADDR]</expression></outVariable><inVariable localId="4" height="20" width="70"><position x="300" y="80" /><connectionPointOut><relPosition x="70" y="10" /></connectionPointOut><expression>DATA</expression></inVariable><outVariable localId="5" height="20" width="225"><position x="1080" y="40" /><connectionPointIn><relPosition x="0" y="10" /><connection refLocalId="4" /></connectionPointIn><expression>GVL_MEM.Mem[WORD#16#0300]</expression></outVariable></FBD>
+</body>
+<addData />
+</pou>
+</pous></types>
+<instances><configurations /></instances>
+</project>

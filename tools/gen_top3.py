@@ -204,12 +204,12 @@ def fb_regfile():
     переменных, чтобы не читать ячейку в той же сети, где пишем).
     """
     s = Sheet(u"FB_RegFile: запись регистров")
-    W(s, u"A", s.blk(u"SEL", [(u"G", R(s, u"LD_A_E")), (u"IN0", R(s, u"REG_WR")), (u"IN1", R(s, u"A"))], 1), 2)
-    W(s, u"X", s.blk(u"SEL", [(u"G", R(s, u"LD_X_E")), (u"IN0", R(s, u"REG_WR")), (u"IN1", R(s, u"X"))], 3), 4)
-    W(s, u"Y", s.blk(u"SEL", [(u"G", R(s, u"LD_Y_E")), (u"IN0", R(s, u"REG_WR")), (u"IN1", R(s, u"Y"))], 5), 6)
-    W(s, u"P", s.blk(u"SEL", [(u"G", R(s, u"LD_P_E")), (u"IN0", R(s, u"REG_WR")), (u"IN1", R(s, u"P_NEW"))], 7), 8)
-    W(s, u"SP", s.blk(u"SEL", [(u"G", R(s, u"LD_SP_E")), (u"IN0", R(s, u"SP_NEW")), (u"IN1", R(s, u"SP"))], 9), 10)
-    W(s, u"PC", s.blk(u"SEL", [(u"G", s.const(u"TRUE", 11)), (u"IN0", R(s, u"PC_NEW")), (u"IN1", R(s, u"PC"))], 11), 12)
+    W(s, u"A", s.blk(u"SEL", [(u"G", R(s, u"LD_A_E")), (u"IN0", R(s, u"A")), (u"IN1", R(s, u"REG_WR"))], 1), 2)
+    W(s, u"X", s.blk(u"SEL", [(u"G", R(s, u"LD_X_E")), (u"IN0", R(s, u"X")), (u"IN1", R(s, u"REG_WR"))], 3), 4)
+    W(s, u"Y", s.blk(u"SEL", [(u"G", R(s, u"LD_Y_E")), (u"IN0", R(s, u"Y")), (u"IN1", R(s, u"REG_WR"))], 5), 6)
+    W(s, u"P", s.blk(u"SEL", [(u"G", R(s, u"LD_P_E")), (u"IN0", R(s, u"P_NEW")), (u"IN1", R(s, u"REG_WR"))], 7), 8)
+    W(s, u"SP", s.blk(u"SEL", [(u"G", R(s, u"LD_SP_E")), (u"IN0", R(s, u"SP")), (u"IN1", R(s, u"SP_NEW"))], 9), 10)
+    W(s, u"PC", s.blk(u"SEL", [(u"G", s.const(u"TRUE", 11)), (u"IN0", R(s, u"PC")), (u"IN1", R(s, u"PC_NEW"))], 11), 12)
     return s
 
 

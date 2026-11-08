@@ -54,7 +54,9 @@ def ANDb(s, a, b, col):
 
 
 def SELb(s, g, a, b, col):
-    return s.blk(u"SEL", [(u"G", g), (u"IN0", a), (u"IN1", b)], col)
+    # Соглашение CODESYS: при G=TRUE выбирается IN1. Наш смысл: "при g -- a",
+    # поэтому a ставим в IN1, а b -- в IN0.
+    return s.blk(u"SEL", [(u"G", g), (u"IN0", b), (u"IN1", a)], col)
 
 
 def ORB(s, ids, col):

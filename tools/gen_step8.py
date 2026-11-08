@@ -66,7 +66,8 @@ def sl_brn2():
     crel = s.ref(u"C_REL", 0)
     take = s.ref(u"TAKE", 0)
     # при G=TRUE (ветвление разрешено) берётся цель перехода
-    s.assign(u"BRN_TGT", s.blk(u"SEL", [(u"G", take), (u"IN0", crel), (u"IN1", pc2)], 2), 4)
+    # при TAKE (G=TRUE) нужна цель перехода C_REL -> она в IN1
+    s.assign(u"BRN_TGT", s.blk(u"SEL", [(u"G", take), (u"IN0", pc2), (u"IN1", crel)], 2), 4)
     return s, []
 
 
