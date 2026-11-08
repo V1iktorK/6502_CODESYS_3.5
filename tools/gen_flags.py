@@ -86,6 +86,24 @@ def main():
     print(u"=== gen_flags ===")
     made = []
 
+    # --- NZF: откуда берутся флаги N и Z.
+    # Флаги N/Z на 6502 -- это свойство ЗАПИСЫВАЕМОГО значения, а не результата
+    # АЛУ: у TAX/TAY/TXA/TYA/PLA и у загрузок АЛУ вообще не участвует
+    # (ALU_R там = 0 + мусор операнда), поэтому Z ставился ложно. Отдельная
+    # ступень считает N_F2/Z_F2 из GVL_CPU.REG_WR -- значения, которое реально
+    # уходит в регистр.
+    sn = Sheet(u"SL_NZF")
+    sn.add_comment(u"N_F2 := старший бит REG_WR;  Z_F2 := REG_WR = 0")
+    rw = sn.ref(CPU + u".REG_WR", 0)
+    sn.assign(CPU + u".N_F2",
+              sn.blk(u"NE", [(u"IN1", sn.blk(u"AND", [(u"IN1", rw),
+                                                      (u"IN2", sn.const(B(0x80), 2))], 2)),
+                             (u"IN2", sn.const(B(0), 2))], 3), 4)
+    sn.assign(CPU + u".Z_F2",
+              sn.blk(u"EQ", [(u"IN1", sn.ref(CPU + u".REG_WR", 4)),
+                             (u"IN2", sn.const(B(0), 4))], 5), 6)
+    made.append((u"SL_NZF", sn, []))
+
     # --- VSEL: источник флага V (при вычитании -- V_SUB, иначе V_ADD).
     # Отдельная ступень, потому что выбор должен быть виден следующей ступени
     # через GVL, а не вычисляться в том же ПОУ (правило 2.5).
@@ -102,15 +120,15 @@ def main():
     # Иначе запись «P_WORK := P» и её же чтение оказались бы в одном ПОУ, а
     # CODESYS в этом случае отдаёт старое значение (правило 2.5).
     s, ins = stage(u"SL_FLG_N", u"P_WORK := SET_NZ ? (N в N_F) : N",
-                   [u"SET_NZ"], setform(u"N_F", 0x80, 0x7F),
-                   [(u"SET_NZ", u"BOOL"), (u"N_F", u"BOOL")],
+                   [u"SET_NZ"], setform(u"N_F2", 0x80, 0x7F),
+                   [(u"SET_NZ", u"BOOL"), (u"N_F2", u"BOOL")],
                    src=CPU + u".P")
     made.append((u"SL_FLG_N", s, ins))
 
     # --- Z (бит 1)
     s, ins = stage(u"SL_FLG_Z", u"Z := SET_NZ ? Z_F : Z",
-                   [u"SET_NZ"], setform(u"Z_F", 0x02, 0xFD),
-                   [(u"SET_NZ", u"BOOL"), (u"Z_F", u"BOOL")])
+                   [u"SET_NZ"], setform(u"Z_F2", 0x02, 0xFD),
+                   [(u"SET_NZ", u"BOOL"), (u"Z_F2", u"BOOL")])
     made.append((u"SL_FLG_Z", s, ins))
 
     # --- C (бит 0): вычисленный перенос, затем CLC (снять) и SEC (поставить)

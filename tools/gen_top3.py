@@ -122,23 +122,40 @@ def fb_stack():
 
 
 def fb_aluflags():
-    s = Sheet(u"FB_CPU_AluFlags: АЛУ и регистр признаков")
+    s = Sheet(u"FB_CPU_AluFlags: АЛУ и условие перехода")
     call(s, u"FB_ALU6502", u"Alu",
          [(u"A", R(s, u"A")), (u"X", R(s, u"X")), (u"P", R(s, u"P")),
           (u"WDATA", R(s, u"WDATA")), (u"ALU_A", R(s, u"ALU_A")),
           (u"ALU_B", R(s, u"ALU_B")), (u"F_SUB", R(s, u"F_SUB")),
           (u"F_CMP", R(s, u"F_CMP")), (u"USE_CARRY", R(s, u"USE_CARRY"))],
          1, w=140)
-    # Регистр P собирается КОНВЕЙЕРОМ ступеней через GVL_CPU.P_WORK:
-    # по одному биту за ступень. Так каждое «изменить бит» читает только
-    # входную переменную, и fan-out не размножает цепочку (см. gen_flags.py).
-    # Стартовое значение P_WORK := P пишет сама первая ступень -- запись и
-    # чтение одной ячейки внутри одного ПОУ дают старое значение (правило 2.5).
+    # Регистр P собирается в ОТДЕЛЬНОМ слое FB_CPU_Flags: ему нужен REG_WR,
+    # который появляется только после FB_WriteBack (см. порядок вызовов в ядре).
+    call(s, u"SL_BRNE", u"Br",
+         [(u"COND", R(s, u"COND")), (u"FZ", R(s, u"FZ")), (u"FC", R(s, u"FC"))],
+         5, w=110)
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
+    return s
+
+
+def fb_flags():
+    """FB_CPU_Flags: регистр P конвейером коротких ступеней.
+
+    Идёт ПОСЛЕ FB_CPU_PcWb (там вычисляется REG_WR) и ДО FB_RegFile
+    (который пишет P := P_NEW). Каждая ступень правит один бит и передаёт
+    состояние через GVL_CPU.P_WORK -- чтение/запись одной ячейки внутри
+    одного ПОУ даёт старое значение (правило 2.5), а между ПОУ -- видно
+    сразу в том же скане.
+    """
+    s = Sheet(u"FB_CPU_Flags: сборка регистра P")
+    call(s, u"SL_NZF", u"Nz", [], 1, w=110)
     call(s, u"SL_VSEL", u"Vsl", [], 1, w=110)
     call(s, u"SL_FLG_N", u"Fn", [(u"SET_NZ", R(s, u"SET_NZ")),
-                                 (u"N_F", R(s, u"N_F"))], 2, w=110)
+                                 (u"N_F2", R(s, u"N_F2"))], 2, w=110)
     call(s, u"SL_FLG_Z", u"Fz", [(u"SET_NZ", R(s, u"SET_NZ")),
-                                 (u"Z_F", R(s, u"Z_F"))], 2, w=110)
+                                 (u"Z_F2", R(s, u"Z_F2"))], 2, w=110)
     call(s, u"SL_FLG_C", u"Fc", [(u"SET_C", R(s, u"SET_C")),
                                  (u"CARRY", R(s, u"CARRY")),
                                  (u"CMD_CLC", R(s, u"CMD_CLC")),
@@ -155,11 +172,6 @@ def fb_aluflags():
         W(s, nm, s.blk(u"NE", [(u"IN1", s.blk(u"AND", [(u"IN1", R(s, u"P_NEW")),
                                                       (u"IN2", s.const(u"BYTE#16#%02X" % m, 7))], 7)),
                                 (u"IN2", s.const(u"BYTE#0", 7))], 8), 9)
-    call(s, u"SL_BRNE", u"Br",
-         [(u"COND", R(s, u"COND")), (u"FZ", R(s, u"FZ")), (u"FC", R(s, u"FC"))],
-         11, w=110)
-    # Технический выход: гарантирует, что CODESYS сгенерирует и
-    # исполнит тело слоя (правило 3 конспекта).
     s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
@@ -340,6 +352,9 @@ def fb_core():
     W(s, u"Chain6", ch, 1)
     ch = call(s, u"FB_CPU_Store", u"S6", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
     W(s, u"Chain7", ch, 1)
+    # Регистр P собирается ПОСЛЕ FB_WriteBack (нужен REG_WR) и ДО FB_RegFile.
+    ch = call(s, u"FB_CPU_Flags", u"S9", [(u"Enable", s.const(u"TRUE", 0))], 11, w=140)
+    W(s, u"Chain9", ch, 1)
     ch = call(s, u"FB_RegFile", u"S7", [(u"Enable", s.const(u"TRUE", 0))], 11, w=140)
     W(s, u"Chain8", ch, 1)
     W(s, u"Done", R(s, u"Enable"), 11)
@@ -410,7 +425,7 @@ def main():
                                  u"Dec", u"FB_Decoder6502",
                                  u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
                                  u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
-                                 u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S7", u"FB_RegFile")
+                                 u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"S7", u"FB_RegFile")
                   + [(u"STaken", u"BOOL")]),
         [fb_core()], u"такт"))
 
@@ -418,6 +433,16 @@ def main():
         u"FB_CPU_Store", u"functionBlock",
         interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=[]),
         [fb_store()], u"запись в память"))
+
+    write(u"FB_CPU_Flags", pou_xml(
+        u"FB_CPU_Flags", u"functionBlock",
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")],
+                  locals_=pouloc(u"Nz", u"SL_NZF", u"Vsl", u"SL_VSEL",
+                                 u"Fn", u"SL_FLG_N", u"Fz", u"SL_FLG_Z",
+                                 u"Fc", u"SL_FLG_C", u"Fv", u"SL_FLG_V",
+                                 u"Fi", u"SL_FLG_I", u"Fb2", u"SL_FLG_B",
+                                 u"F5", u"SL_FLG5")),
+        [fb_flags()], u"сборка регистра P"))
 
     write(u"FB_Latch", pou_xml(
         u"FB_Latch", u"functionBlock",

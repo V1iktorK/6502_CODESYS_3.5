@@ -27,14 +27,14 @@ from opcodes import BOOL_SIGNALS, BYTE_SIGNALS, build_effects
 ORDER = [
     u"F_UnpackByte", u"F_PackByte", u"F_Join16", u"F_Split16", u"F_Add16",
     u"FB_Fetch", u"FB_FetchOp", u"FB_Decoder6502", u"FB_ALU6502",
-    u"SL_VSEL", u"SL_FLG_N", u"SL_FLG_Z", u"SL_FLG_C", u"SL_FLG_V", u"SL_FLG_I",
+    u"SL_VSEL", u"SL_NZF", u"SL_FLG_N", u"SL_FLG_Z", u"SL_FLG_C", u"SL_FLG_V", u"SL_FLG_I",
     u"SL_FLG_B", u"SL_FLG5", u"FB_WriteBack",
     u"SL_C1A", u"SL_C1B", u"SL_YW", u"SL_IND2", u"SL_INDP", u"SL_RELA",
     u"SL_RELC", u"SL_BRK", u"SL_SELECT12", u"SL_WDATA2",
     u"SL_STK1", u"SL_STK2", u"SL_STK3", u"SL_STK4", u"SL_SPSEL",
     u"SL_ADV", u"SL_JRET", u"SL_BRNE", u"SL_BRN2", u"SL_PCSEL",
     u"FB_CPU_Addr1", u"FB_CPU_Select", u"FB_CPU_Stack", u"FB_CPU_AluFlags",
-    u"FB_CPU_PcWb", u"FB_CPU_Store", u"FB_Latch", u"FB_RegFile", u"FB_CPU_Core",
+    u"FB_CPU_PcWb", u"FB_CPU_Store", u"FB_CPU_Flags", u"FB_Latch", u"FB_RegFile", u"FB_CPU_Core",
 ]
 
 STATE = [(u"A", u"BYTE"), (u"X", u"BYTE"), (u"Y", u"BYTE"), (u"P", u"BYTE"),
@@ -48,7 +48,7 @@ ADDRV = [(u"C_IMM", u"WORD"), (u"C_ZP", u"WORD"), (u"C_ZPX", u"WORD"),
          (u"OFFW", u"WORD"), (u"YW", u"WORD"), (u"EFF", u"WORD"),
          (u"WDATA", u"BYTE"), (u"BRKV", u"WORD")]
 ALUV = [(u"ALU_R", u"BYTE"), (u"CARRY", u"BOOL"), (u"V_ADD", u"BOOL"),
-        (u"V_SUB", u"BOOL"), (u"N_F", u"BOOL"), (u"Z_F", u"BOOL"),
+        (u"V_SUB", u"BOOL"), (u"N_F", u"BOOL"), (u"Z_F", u"BOOL"), (u"N_F2", u"BOOL"), (u"Z_F2", u"BOOL"),
         (u"P_NEW", u"BYTE"), (u"FZ", u"BOOL"), (u"FC", u"BOOL"), (u"TAKE", u"BOOL"),
         # P_WORK -- рабочая копия регистра P, которую по одному биту правят
         # ступени SL_FLG_*; VSEL -- выбранный источник флага V
@@ -74,7 +74,7 @@ GATEV = [(u"LD_A_E", u"BOOL"), (u"LD_X_E", u"BOOL"), (u"LD_Y_E", u"BOOL"),
          (u"WRD0", u"BYTE"), (u"WRD1", u"BYTE"), (u"WRD2", u"BYTE"),
          (u"WR_EN0", u"BOOL"), (u"WR_EN1", u"BOOL"), (u"WR_EN2", u"BOOL"),
          (u"Chain1", u"BOOL"), (u"Chain2", u"BOOL"), (u"Chain3", u"BOOL"), (u"Chain4", u"BOOL"),
-         (u"Chain5", u"BOOL"), (u"Chain6", u"BOOL"), (u"Chain7", u"BOOL"), (u"Chain8", u"BOOL")]
+         (u"Chain5", u"BOOL"), (u"Chain6", u"BOOL"), (u"Chain7", u"BOOL"), (u"Chain8", u"BOOL"), (u"Chain9", u"BOOL")]
 
 
 def table_text():

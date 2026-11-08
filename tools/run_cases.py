@@ -114,15 +114,19 @@ def main():
     results = []
     t0 = time.time()
     # Ядро стартует остановленным. Тесты гоняют его СВОБОДНО, а останавливает
-    # сама программа: в конце стоит команда HLT ($02), которая запрещает
-    # обновление PC. Так не нужно ловить «один такт за импульс» по времени
-    # (импульс короче цикла задачи проскакивал), а PC после останова равен
-    # ровно тому адресу, где стоит HLT -- это и проверяется.
+    # сама программа: в конце стоит JMP на себя (парковка). Проверено: после
+    # такой парковки PC приходит ровно адресом JMP, тогда как команда HLT
+    # оставляла в PC только младший байт адреса.
     wr(u"GVL_CPU.Step_On", u"FALSE")
     wr(u"GVL_CPU.Step_Pulse", u"FALSE")
     wr(u"GVL_CPU.Run", u"FALSE")
     time.sleep(0.1)
-    HLT = 0x02
+
+    def park(addr):
+        """JMP na sebya po adresu addr (4C lo hi) -- ostanavlivaet PC na addr."""
+        wrb(addr, 0x4C)
+        wrb(addr + 1, addr & 0xFF)
+        wrb(addr + 2, (addr >> 8) & 0xFF)
 
     for case in all_cases:
         gid = case["group"]
@@ -144,9 +148,9 @@ def main():
             for i, b in enumerate(code):
                 wrb(pc0 + i, b)
             # останов в конце программы и по ожидаемому адресу перехода
-            wrb(end, HLT)
+            park(end)
             if exp[u"pc"] != end and end < exp[u"pc"] < end + 0x20:
-                wrb(exp[u"pc"], HLT)
+                park(exp[u"pc"])
             wr(u"GVL_CPU.PC", u"16#%04X" % pc0)
             # Регистры ядра пересчитываются каждый скан, и одна «запоздавшая»
             # запись может затереться. Поэтому пишем и ПРОВЕРЯЕМ: пока чтение

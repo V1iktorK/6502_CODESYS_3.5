@@ -116,9 +116,13 @@ def build_effects():
             dst = {u"TAX": u"LD_X", u"TAY": u"LD_Y", u"TXA": u"LD_A", u"TYA": u"LD_A"}[mn]
             set_(op, SET_NZ=True, SRC=src, **{dst: True})
         elif mn in (u"ADC", u"SBC", u"CMP"):
+            # SRC=SRC_ALU и для CMP: CMP ничего не пишет в регистры, но его
+            # результат (A - M) нужен как источник флагов N/Z. Пусть REG_WR
+            # несёт результат АЛУ и для CMP -- тогда флаги для ВСЕХ команд
+            # берутся из одного места (REG_WR), а не из двух разных.
             set_(op, LD_A=(mn != u"CMP"), SET_NZ=True, SET_C=True,
                  USE_CARRY=(mn != u"CMP"), SET_V=(mn != u"CMP"),
-                 SRC=SRC_ALU if mn != u"CMP" else 0,
+                 SRC=SRC_ALU,
                  ALU_A=ALU_A, ALU_B=ALU_B_MDR,
                  F_ADD=(mn == u"ADC"), F_SUB=(mn == u"SBC"), F_CMP=(mn == u"CMP"))
         elif mn == u"INX":
