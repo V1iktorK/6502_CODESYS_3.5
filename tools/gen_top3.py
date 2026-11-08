@@ -370,6 +370,9 @@ def fb_core():
     W(s, u"Chain9", ch, 1)
     ch = call(s, u"FB_RegFile", u"S7", [(u"Enable", R(s, u"Enable"))], 11, w=140)
     W(s, u"Chain8", ch, 1)
+    # Снимок такта -- последним: к этому моменту все значения готовы.
+    ch = call(s, u"SL_SNAPSHOT", u"Snap", [], 12, w=110)
+    W(s, u"Chain14", ch, 1)
     W(s, u"Done", R(s, u"Enable"), 11)
     return s
 
@@ -438,7 +441,7 @@ def main():
                                  u"Dec", u"FB_Decoder6502",
                                  u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
                                  u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
-                                 u"Prep", u"SL_PREP", u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"Srs", u"SL_REGSEL", u"Sd", u"SL_STDATA", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"Sw", u"SL_STWRITE", u"S7", u"FB_RegFile")
+                                 u"Prep", u"SL_PREP", u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"Srs", u"SL_REGSEL", u"Sd", u"SL_STDATA", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"Sw", u"SL_STWRITE", u"S7", u"FB_RegFile", u"Snap", u"SL_SNAPSHOT")
                   + [(u"STaken", u"BOOL")]),
         [fb_core()], u"такт"))
 

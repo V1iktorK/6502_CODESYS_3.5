@@ -123,9 +123,9 @@ def main():
     # сама программа: в конце стоит JMP на себя (парковка). Проверено: после
     # такой парковки PC приходит ровно адресом JMP, тогда как команда HLT
     # оставляла в PC только младший байт адреса.
-    wr(u"GVL_CPU.Step_On", u"FALSE")
+    wr(u"GVL_CPU.Run", u"TRUE")
+    wr(u"GVL_CPU.Step_On", u"TRUE")
     wr(u"GVL_CPU.Step_Pulse", u"FALSE")
-    wr(u"GVL_CPU.Run", u"FALSE")
     time.sleep(0.1)
 
     def park(addr):
@@ -195,26 +195,17 @@ def main():
                     for k, fmt, v in want:
                         wr(k, fmt % v)
                     time.sleep(0.05)
-                wr(u"GVL_CPU.Run", u"TRUE")
-                # Даём ядру гарантированно отработать: программа короткая, после
-                # неё стоит JMP на себя, поэтому лишнее время ничего не портит.
-                time.sleep(0.25)
-                # ждём останова: PC перестал меняться и равен точке останова
-                stops = set([end])
-                if exp[u"pc"] != end:
-                    stops.add(exp[u"pc"])
-                parked = False
-                prev = None
-                probe = None
-                for _ in range(60):
-                    time.sleep(0.02)
-                    pc = rd(u"GVL_CPU.PC")
-                    if pc in stops and pc == prev:
-                        parked = True
-                        break
-                    prev = pc
-                wr(u"GVL_CPU.Run", u"FALSE")
-                time.sleep(0.1)
+                # ПОШАГОВЫЙ РЕЖИМ: один импульс Step_Pulse = ровно одна команда
+                # (защёлка STaken в FB_CPU_Core). После импульса ядро стоит,
+                # поэтому снимок LAST_* хранит сигналы ИМЕННО этой команды,
+                # а PC равен ожидаемому адресу следующей -- без парковок.
+                parked = True
+                steps = int(case.get("steps", 1) or 1)
+                for _ in range(steps):
+                    wr(u"GVL_CPU.Step_Pulse", u"TRUE")
+                    time.sleep(0.12)
+                    wr(u"GVL_CPU.Step_Pulse", u"FALSE")
+                    time.sleep(0.08)
             got = {}
             for _ in range(4):
                 cur = {
@@ -236,9 +227,14 @@ def main():
                     bad.append(u"Mem[%04X] ожид %02X факт %s" % (a, v, g))
             if not parked and not bad:
                 bad.append(u"нет останова (PC=%s)" % got.get(u"pc"))
-            if bad and probe is not None:
-                bad.append(u"в такте: SP_MODE=%s ADDR_MODE=%s SRC=%s REG_WR=%s WR_EN0=%s WR0=%s"
-                           % probe)
+            if bad:
+                # Снимок последнего такта (SL_SNAPSHOT) -- точные значения
+                # сигналов в момент команды, а не после остановки.
+                snap = u" ".join(
+                    u"%s=%s" % (n, rd(u"GVL_CPU.PREV_%s" % n))
+                    for n in (u"OPs", u"SP_MODE", u"IS_JSR", u"SRC", u"REG_WR",
+                              u"WRD0", u"WR0", u"WR_EN0", u"EFF", u"P_NEW"))
+                bad.append(u"такт: " + snap)
             ok = not bad
             results.append((name, ok, bad))
             log(u"  %-30s %s%s" % (name, u"PASS" if ok else u"FAIL",
