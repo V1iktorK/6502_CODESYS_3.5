@@ -291,8 +291,17 @@ def build_alu():
 
 # ============================================================ 4. ФЛАГИ
 def build_flags():
-    s = Sheet(u"FB_Flags: регистр P (N V - B D I Z C), бит 5 всегда 1")
-    s.add_comment(u"Каждый флаг собирается из трёх источников: вычисленное значение, команда, старое P")
+    """FB_Flags: регистр P (N V - B D I Z C), бит 5 всегда 1.
+
+    Флаги собираются ПРЯМОЙ БАЙТОВОЙ АРИФМЕТИКОЙ: бит очищается через AND с
+    маской, ставится через OR с маской, а выбор «вычисленное значение или
+    старое» делает SEL. Раньше здесь были распаковка/упаковка массива битов
+    (F_UnpackByte/F_PackByte), и в рантайме CODESYS регистр P не собирался
+    (запись P=0x24 давала 0x38 и т.п.). Прямые маски такой возможности
+    лишены: каждый бит виден в схеме отдельным AND/OR.
+    """
+    s = Sheet(u"FB_Flags: регистр P (N V - B D I Z C)")
+    s.add_comment(u"Бит очищается AND с маской, ставится OR с маской; выбор источника — SEL")
 
     pv = s.ref(u"P", 0)
     setnz = s.ref(u"SET_NZ", 0)
@@ -311,41 +320,45 @@ def build_flags():
     vs = s.ref(u"V_SUB", 0)
     cr = s.ref(u"CARRY", 0)
 
-    # ---- распаковка старого P: выход функции -- массив, поэтому через переменную
-    s.assign(u"UNP", s.blk(u"F_UnpackByte", [(u"IN", pv)], 2, width=150), 3)
+    clr = lambda p, m, col: s.blk(u"AND", [(u"IN1", p), (u"IN2", s.const(u"BYTE#16#%02X" % m, col))], col)
+    set_ = lambda p, m, col: s.blk(u"OR", [(u"IN1", p), (u"IN2", s.const(u"BYTE#16#%02X" % m, col))], col)
+    bit = lambda v, m, col: SELb(s, v, s.const(B0, col), s.const(u"BYTE#16#%02X" % m, col), col)
 
-    n_new = SELb(s, setnz, s.ref(u"UNP[0]", 4), nf, 5)
-    z_new = SELb(s, setnz, s.ref(u"UNP[6]", 4), zf, 5)
-    c_new = SELb(s, setc, s.ref(u"UNP[7]", 4), cr, 5)
-    v_new = SELb(s, setv, s.ref(u"UNP[1]", 4), SELb(s, fsub, va, vs, 5), 6)
+    # ---- N (бит 7) и Z (бит 1): оба обновляются сигналом SET_NZ
+    # nz = (P без N и Z) OR (N ? 80 : 00) OR (Z ? 02 : 00)
+    nz = s.blk(u"OR", [(u"IN1", clr(pv, 0x7F, 6)), (u"IN2", bit(nf, 0x80, 6))], 7)
+    nz = s.blk(u"OR", [(u"IN1", clr(nz, 0xFD, 7)), (u"IN2", bit(zf, 0x02, 7))], 8)
+    pz = SELb(s, setnz, pv, nz, 9)
 
-    # ---- команды CLC/SEC и SEI/CLI имеют наивысший приоритет
-    c_cmd = SELb(s, clc, c_new, s.const(F, 6), 7)
-    c_cmd2 = SELb(s, sec, c_cmd, s.const(T, 6), 8)
-    i_cmd = SELb(s, sei, s.ref(u"UNP[5]", 4), s.const(T, 7), 8)
-    i_cmd2 = SELb(s, cli, i_cmd, s.const(F, 7), 9)
-    b_new = SELb(s, setb, s.ref(u"UNP[3]", 4), s.const(T, 8), 9)
+    # ---- C (бит 0): вычисленный перенос, затем команды CLC/SEC (высший приоритет)
+    pc1 = SELb(s, setc, pz, s.blk(u"OR", [(u"IN1", clr(pz, 0xFE, 9)),
+                                          (u"IN2", bit(cr, 0x01, 9))], 10), 11)
+    pc2 = SELb(s, clc, pc1, clr(pc1, 0xFE, 11), 12)
+    pc3 = SELb(s, sec, pc2, set_(pc2, 0x01, 12), 13)
 
-    s.assign(u"PKD[0]", n_new, 10)
-    s.assign(u"PKD[1]", v_new, 10)
-    s.assign(u"PKD[2]", s.const(T, 10), 10)          # бит 5 ВСЕГДА 1
-    s.assign(u"PKD[3]", b_new, 10)
-    s.assign(u"PKD[4]", s.ref(u"UNP[4]", 4), 10)      # D не изменяем
-    s.assign(u"PKD[5]", i_cmd2, 10)
-    s.assign(u"PKD[6]", z_new, 10)
-    s.assign(u"PKD[7]", c_cmd2, 10)
+    # ---- V (бит 6): при вычитании берётся V_SUB, иначе V_ADD
+    vsel = SELb(s, fsub, va, vs, 12)
+    pv1 = SELb(s, setv, pc3, s.blk(u"OR", [(u"IN1", clr(pc3, 0xBF, 13)),
+                                           (u"IN2", bit(vsel, 0x40, 13))], 14), 15)
 
-    s.assign(u"P_NEW", s.blk(u"F_PackByte", [(u"B", s.ref(u"PKD", 11))], 11, width=150), 12)
+    # ---- I (бит 2): команды SEI/CLI
+    pi1 = SELb(s, sei, pv1, set_(pv1, 0x04, 15), 16)
+    pi2 = SELb(s, cli, pi1, clr(pi1, 0xFB, 16), 17)
 
-    # ---- флаги НОВОГО P для логики ветвления
-    s.assign(u"PUNP", s.blk(u"F_UnpackByte", [(u"IN", s.ref(u"P_NEW", 12))], 12, width=150), 13)
-    for k, nm in ((0, u"FN"), (1, u"FV"), (3, u"FB"), (4, u"FD"),
-                  (5, u"FI"), (6, u"FZ"), (7, u"FC")):
-        s.assign(nm, s.ref(u"PUNP[%d]" % k, 14), 15)
+    # ---- B (бит 4): ставится только BRK/PHP, иначе сохраняется
+    pb1 = SELb(s, setb, pi2, set_(pi2, 0x10, 17), 18)
 
-    L = [(u"UNP", u"ARRAY[0..7] OF BOOL"), (u"PKD", u"ARRAY[0..7] OF BOOL"),
-         (u"PUNP", u"ARRAY[0..7] OF BOOL")]
-    return s, L
+    # ---- бит 5 всегда единица
+    s.assign(u"P_NEW", set_(pb1, 0x20, 18), 19)
+
+    # ---- флаги НОВОГО P для логики ветвления (байт AND маски -> BOOL)
+    pn = s.ref(u"P_NEW", 19)
+    for m, nm in ((0x80, u"FN"), (0x40, u"FV"), (0x10, u"FB"), (0x08, u"FD"),
+                  (0x04, u"FI"), (0x02, u"FZ"), (0x01, u"FC")):
+        s.assign(nm, s.blk(u"NE", [(u"IN1", s.blk(u"AND", [(u"IN1", pn),
+                                                          (u"IN2", s.const(u"BYTE#16#%02X" % m, 19))], 20)),
+                                  (u"IN2", s.const(B0, 20))], 21), 22)
+    return s, []
 
 
 # ============================================================ 5. СТЕК + PC

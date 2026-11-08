@@ -129,15 +129,35 @@ def fb_aluflags():
           (u"ALU_B", R(s, u"ALU_B")), (u"F_SUB", R(s, u"F_SUB")),
           (u"F_CMP", R(s, u"F_CMP")), (u"USE_CARRY", R(s, u"USE_CARRY"))],
          1, w=140)
-    call(s, u"FB_Flags", u"Flg",
-         [(u"P", R(s, u"P"))] +
-         [(n, R(s, n)) for n in
-          (u"SET_NZ", u"SET_C", u"SET_V", u"SET_B", u"CMD_CLC", u"CMD_SEC",
-           u"CMD_SEI", u"CMD_CLI", u"F_SUB", u"N_F", u"Z_F", u"V_ADD",
-           u"V_SUB", u"CARRY")], 3, w=130)
+    # Регистр P собирается КОНВЕЙЕРОМ ступеней через GVL_CPU.P_WORK:
+    # по одному биту за ступень. Так каждое «изменить бит» читает только
+    # входную переменную, и fan-out не размножает цепочку (см. gen_flags.py).
+    # Стартовое значение P_WORK := P пишет сама первая ступень -- запись и
+    # чтение одной ячейки внутри одного ПОУ дают старое значение (правило 2.5).
+    call(s, u"SL_VSEL", u"Vsl", [], 1, w=110)
+    call(s, u"SL_FLG_N", u"Fn", [(u"SET_NZ", R(s, u"SET_NZ")),
+                                 (u"N_F", R(s, u"N_F"))], 2, w=110)
+    call(s, u"SL_FLG_Z", u"Fz", [(u"SET_NZ", R(s, u"SET_NZ")),
+                                 (u"Z_F", R(s, u"Z_F"))], 2, w=110)
+    call(s, u"SL_FLG_C", u"Fc", [(u"SET_C", R(s, u"SET_C")),
+                                 (u"CARRY", R(s, u"CARRY")),
+                                 (u"CMD_CLC", R(s, u"CMD_CLC")),
+                                 (u"CMD_SEC", R(s, u"CMD_SEC"))], 3, w=120)
+    call(s, u"SL_FLG_V", u"Fv", [(u"SET_V", R(s, u"SET_V"))], 3, w=110)
+    call(s, u"SL_FLG_I", u"Fi", [(u"CMD_SEI", R(s, u"CMD_SEI")),
+                                 (u"CMD_CLI", R(s, u"CMD_CLI"))], 4, w=110)
+    call(s, u"SL_FLG_B", u"Fb2", [(u"SET_B", R(s, u"SET_B"))], 4, w=110)
+    call(s, u"SL_FLG5", u"F5", [], 5, w=90)
+    W(s, u"P_NEW", R(s, u"P_WORK"), 6)
+    # Флаги НОВОГО P для логики ветвления: (P_NEW AND маска) <> 0
+    for m, nm in ((0x80, u"FN"), (0x40, u"FV"), (0x10, u"FB"), (0x08, u"FD"),
+                  (0x04, u"FI"), (0x02, u"FZ"), (0x01, u"FC")):
+        W(s, nm, s.blk(u"NE", [(u"IN1", s.blk(u"AND", [(u"IN1", R(s, u"P_NEW")),
+                                                      (u"IN2", s.const(u"BYTE#16#%02X" % m, 7))], 7)),
+                                (u"IN2", s.const(u"BYTE#0", 7))], 8), 9)
     call(s, u"SL_BRNE", u"Br",
          [(u"COND", R(s, u"COND")), (u"FZ", R(s, u"FZ")), (u"FC", R(s, u"FC"))],
-         5, w=110)
+         11, w=110)
     # Технический выход: гарантирует, что CODESYS сгенерирует и
     # исполнит тело слоя (правило 3 конспекта).
     s.assign(u"OUT", R(s, u"Enable"), 22)
@@ -183,9 +203,10 @@ def fb_store():
     stack_w = s.blk(u"OR", [(u"IN1", push1), (u"IN2", push3)], 2)
 
     # --- port 0
-    en0 = s.blk(u"OR", [(u"IN1", R(s, u"WR_MEM_E")),
-                        (u"IN2", s.blk(u"OR", [(u"IN1", R(s, u"IS_JSR")),
-                                               (u"IN2", stack_w)], 3))], 4)
+    en0 = s.blk(u"AND", [(u"IN1", R(s, u"Enable")),
+                         (u"IN2", s.blk(u"OR", [(u"IN1", R(s, u"WR_MEM_E")),
+                                                (u"IN2", s.blk(u"OR", [(u"IN1", R(s, u"IS_JSR")),
+                                                                       (u"IN2", stack_w)], 3))], 3))], 4)
     W(s, u"WR0", s.blk(u"SEL", [(u"G", stack_w), (u"IN0", R(s, u"EFF")),
                                 (u"IN1", R(s, u"STK_A0"))], 4), 5)
     W(s, u"WRD0", s.blk(u"SEL", [(u"G", push3), (u"IN0", R(s, u"REG_WR")),
@@ -197,7 +218,9 @@ def fb_store():
                             (u"IN1", R(s, u"WRD0"))], 7), 8)
 
     # --- port 1 (JSR: PCH, BRK: PCH)
-    en1 = s.blk(u"OR", [(u"IN1", R(s, u"IS_JSR")), (u"IN2", push3)], 4)
+    en1 = s.blk(u"AND", [(u"IN1", R(s, u"Enable")),
+                         (u"IN2", s.blk(u"OR", [(u"IN1", R(s, u"IS_JSR")),
+                                                (u"IN2", push3)], 3))], 4)
     W(s, u"WR1", R(s, u"STK_A1"), 5)
     W(s, u"WRD1", R(s, u"PCH"), 6)
     W(s, u"WR_EN1", en1, 6)
@@ -209,7 +232,7 @@ def fb_store():
     # --- port 2 (JSR: PCL, BRK: PCL)
     W(s, u"WR2", R(s, u"STK_A2"), 5)
     W(s, u"WRD2", R(s, u"PCL"), 6)
-    W(s, u"WR_EN2", push3, 6)
+    W(s, u"WR_EN2", s.blk(u"AND", [(u"IN1", R(s, u"Enable")), (u"IN2", push3)], 6), 6)
     s.assign(u"GVL_MEM.Mem[GVL_CPU.WR2]",
              s.blk(u"SEL", [(u"G", R(s, u"WR_EN2")),
                             (u"IN0", s.ref(u"GVL_MEM.Mem[GVL_CPU.WR2]", 7)),
@@ -234,7 +257,8 @@ def fb_regfile():
     W(s, u"Y", s.blk(u"SEL", [(u"G", R(s, u"LD_Y_E")), (u"IN0", R(s, u"Y")), (u"IN1", R(s, u"REG_WR"))], 5), 6)
     W(s, u"P", s.blk(u"SEL", [(u"G", R(s, u"LD_P_E")), (u"IN0", R(s, u"P_NEW")), (u"IN1", R(s, u"REG_WR"))], 7), 8)
     W(s, u"SP", s.blk(u"SEL", [(u"G", R(s, u"LD_SP_E")), (u"IN0", R(s, u"SP")), (u"IN1", R(s, u"SP_NEW"))], 9), 10)
-    W(s, u"PC", s.blk(u"SEL", [(u"G", s.const(u"TRUE", 11)), (u"IN0", R(s, u"PC")), (u"IN1", R(s, u"PC_NEW"))], 11), 12)
+    # PC пишется только при разрешённом такте: иначе Run=FALSE не заморозит ядро.
+    W(s, u"PC", s.blk(u"SEL", [(u"G", R(s, u"Enable")), (u"IN0", R(s, u"PC")), (u"IN1", R(s, u"PC_NEW"))], 11), 12)
     # Технический выход: гарантирует, что CODESYS сгенерирует и
     # исполнит тело слоя (правило 3 конспекта).
     s.assign(u"OUT", R(s, u"Enable"), 22)
@@ -264,13 +288,39 @@ def fb_latch():
 
 def fb_core():
     s = Sheet(u"FB_CPU_Core: один такт MOS 6502")
-    W(s, u"Enable", s.ref(u"Enable", 0), 1)      # проброс разрешения такта в GVL
+    # ---- пульт: Run / пошаговый режим
+    # В пошаговом режиме такт разрешён только по импульсу Step_Pulse и только
+    # один раз: защёлка STaken (локальная переменная ПОУ) помнит, что шаг уже
+    # сделан, и снимается вместе с импульсом. Это нужно и тестам (точная
+    # постановка состояния без гонки), и операторской панели HMI.
+    run = s.ref(u"Enable", 0)
+    st_on = R(s, u"Step_On")
+    pulse = R(s, u"Step_Pulse")
+    stak = s.ref(u"STaken", 0)
+    permit = s.blk(u"AND", [(u"IN1", pulse),
+                            (u"IN2", s.blk(u"NOT", [(u"IN", stak)], 1))], 2)
+    en = s.blk(u"AND", [(u"IN1", run),
+                        (u"IN2", s.blk(u"OR", [(u"IN1", s.blk(u"NOT", [(u"IN", st_on)], 1)),
+                                               (u"IN2", permit)], 2))], 3)
+    W(s, u"Enable", en, 4)
+    s.assign(u"STaken", s.blk(u"AND", [(u"IN1", s.blk(u"OR", [(u"IN1", stak),
+                                                              (u"IN2", s.blk(u"AND", [(u"IN1", st_on),
+                                                                                      (u"IN2", permit)], 3))], 3)),
+                              (u"IN2", pulse)], 4), 5)
+    W(s, u"Step_Taken", s.ref(u"STaken", 6), 6)
     call(s, u"FB_Fetch", u"Fch", [(u"PCs", R(s, u"PC"))], 2, w=110)
+    call(s, u"FB_FetchOp", u"Fop",
+         [(u"PC1", R(s, u"PC1")), (u"PC2", R(s, u"PC2"))], 2, w=120)
     call(s, u"FB_Decoder6502", u"Dec", [(u"Op", R(s, u"OPs"))], 3, w=170)
-    # Байтовые сигналы — из таблицы декодирования (данные в GVL_TABLE)
+    # Байтовые сигналы — из таблицы декодирования (данные в GVL_TABLE).
+    # SP_MODE пропускается через разрешение такта: иначе при Run=FALSE ядро
+    # продолжало бы толкать байты в стек каждый скан (SP_MODE не зависит от PC).
     for sig in (u"ADDR_MODE", u"LEN", u"SRC", u"ALU_A", u"ALU_B",
-                u"PC_MODE", u"SP_MODE", u"COND"):
+                u"PC_MODE", u"COND"):
         W(s, sig, s.ref(u"GVL_TABLE.%s[GVL_CPU.OPs]" % sig, 4), 4)
+    W(s, u"SP_MODE",
+      s.blk(u"SEL", [(u"G", R(s, u"Enable")), (u"IN0", s.const(u"BYTE#0", 4)),
+                     (u"IN1", s.ref(u"GVL_TABLE.SP_MODE[GVL_CPU.OPs]", 4))], 4), 4)
 
     # Разрешения такта: сигнал И Enable (без этого регистры не пишутся)
     for sig in (u"LD_A", u"LD_X", u"LD_Y", u"LD_P", u"LD_SP", u"WR_MEM"):
@@ -299,7 +349,7 @@ def fb_core():
 def prg():
     s = Sheet(u"PLC_PRG: один такт процессора за скан задачи")
     s.add_comment(u"Каждый скан задачи выполняется ровно одна команда MOS 6502")
-    call(s, u"FB_CPU_Core", u"Core", [(u"Enable", s.const(u"TRUE", 0))], 2, w=140)
+    call(s, u"FB_CPU_Core", u"Core", [(u"Enable", R(s, u"Run"))], 2, w=140)
     return s
 
 
@@ -336,7 +386,12 @@ def main():
 
     write(u"FB_CPU_AluFlags", pou_xml(
         u"FB_CPU_AluFlags", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=pouloc(u"Alu", u"FB_ALU6502", u"Flg", u"FB_Flags",
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")],
+                  locals_=pouloc(u"Alu", u"FB_ALU6502", u"Vsl", u"SL_VSEL",
+                                 u"Fn", u"SL_FLG_N", u"Fz", u"SL_FLG_Z",
+                                 u"Fc", u"SL_FLG_C", u"Fv", u"SL_FLG_V",
+                                 u"Fi", u"SL_FLG_I", u"Fb2", u"SL_FLG_B",
+                                 u"F5", u"SL_FLG5",
                                  u"Br", u"SL_BRNE")),
         [fb_aluflags()], u"АЛУ и флаги"))
 
@@ -351,10 +406,12 @@ def main():
     write(u"FB_CPU_Core", pou_xml(
         u"FB_CPU_Core", u"functionBlock",
         interface(inputs=[(u"Enable", u"BOOL")],
-                  locals_=pouloc(u"Fch", u"FB_Fetch", u"Dec", u"FB_Decoder6502",
+                  locals_=pouloc(u"Fch", u"FB_Fetch", u"Fop", u"FB_FetchOp",
+                                 u"Dec", u"FB_Decoder6502",
                                  u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
                                  u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
-                                 u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S7", u"FB_RegFile")),
+                                 u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S7", u"FB_RegFile")
+                  + [(u"STaken", u"BOOL")]),
         [fb_core()], u"такт"))
 
     write(u"FB_CPU_Store", pou_xml(

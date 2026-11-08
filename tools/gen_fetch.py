@@ -33,14 +33,35 @@ OUT = os.path.join(ROOT, "plcopen")
 MEM = u"GVL_MEM"
 
 INPUTS = [(u"PCs", u"WORD")]
-OUTPUTS = [(u"OPs", u"BYTE"), (u"OP1", u"BYTE"), (u"OP2", u"BYTE"),
-           (u"PC1", u"WORD"), (u"PC2", u"WORD"),
-           (u"PCL", u"BYTE"), (u"PCH", u"BYTE")]
+OUTPUTS = [(u"OPs", u"BYTE"), (u"PC1", u"WORD"), (u"PC2", u"WORD")]
+
+# Отдельный ПОУ для чтения операндов. Причина (конспект 2.5): внутри одного ПОУ
+# чтение ячейки, записанной в этой же схеме, даёт СТАРОЕ значение. Поэтому адрес
+# PC1/PC2 считается в FB_Fetch, а память по нему читает уже ДРУГОЙ ПОУ --
+# в том же скане, но на следующем уровне композиции.
+IN_OP = [(u"PC1", u"WORD"), (u"PC2", u"WORD")]
+OUT_OP = [(u"OP1", u"BYTE"), (u"OP2", u"BYTE"), (u"PCL", u"BYTE"), (u"PCH", u"BYTE")]
+
+
+def build_fetchop():
+    """FB_FetchOp: байты операнда по уже вычисленным адресам PC1 / PC2."""
+    s = Sheet(u"FB_FetchOp: чтение двух байт операнда")
+    s.add_comment(u"OP1 := Mem[PC1];  OP2 := Mem[PC2];  PCL/PCH := байты PC2")
+    s.assign(u"OP1", s.ref(MEM + u".Mem[PC1]", 0), 2)
+    s.assign(u"OP2", s.ref(MEM + u".Mem[PC2]", 0), 2)
+    pc2 = s.ref(u"PC2", 0)
+    # Младший байт: результат AND имеет тип WORD, поэтому обязателен WORD_TO_BYTE
+    # (иначе CODESYS пишет "Невозможно конвертировать тип 'UINT' в тип 'BYTE'").
+    lo = s.blk(u"AND", [(u"IN1", pc2), (u"IN2", s.const(u"WORD#255", 2))], 3)
+    s.assign(u"PCL", s.blk(u"WORD_TO_BYTE", [(u"IN", lo)], 4), 5)
+    hi = s.blk(u"SHR", [(u"IN1", pc2), (u"IN2", s.const(u"WORD#8", 2))], 3)
+    s.assign(u"PCH", s.blk(u"WORD_TO_BYTE", [(u"IN", hi)], 4), 5)
+    return s
 
 
 def build_fetch():
-    s = Sheet(u"FB_Fetch: чтение кода операции и двух байт операнда")
-    s.add_comment(u"ВЫБОРКА: OP := Mem[PC];  OP1 := Mem[PC+1];  OP2 := Mem[PC+2]")
+    s = Sheet(u"FB_Fetch: чтение кода операции и адресов операнда")
+    s.add_comment(u"ВЫБОРКА: OP := Mem[PC];  PC1 := PC+1;  PC2 := PC+2")
 
     # ---- колонка 0: адреса следующ их байтов
     pcs = s.ref(u"PCs", 0)
@@ -50,23 +71,9 @@ def build_fetch():
     pc2 = s.blk(u"ADD", [(u"IN1", pcs), (u"IN2", s.const(u"WORD#2", 0))], 2, width=90, anchor=pc1)
     s.assign(u"PC2", pc2, 3)
 
-    # ---- колонка 4: чтение памяти по трём адресам (три независимых порта)
-    op = s.ref(u"" + MEM + u".Mem[PCs]", 4)
+    # ---- колонка 4: чтение кода операции по адресу PC
+    op = s.ref(MEM + u".Mem[PCs]", 4)
     s.assign(u"OPs", op, 5)
-
-    o1 = s.ref(MEM + u".Mem[PC1]", 4)
-    s.assign(u"OP1", o1, 5)
-
-    o2 = s.ref(MEM + u".Mem[PC2]", 4)
-    s.assign(u"OP2", o2, 5)
-
-    # ---- колонка 6: разложение PC2 на байты (нужно для абсолютной адресации)
-    lo = s.blk(u"WORD_TO_BYTE", [(u"IN", pc2)], 6, width=140)
-    s.assign(u"PCL", lo, 7)
-
-    hi_shift = s.blk(u"SHR", [(u"IN", pc2), (u"N", s.const(u"WORD#8", 6))], 6, width=90)
-    hi = s.blk(u"WORD_TO_BYTE", [(u"IN", hi_shift)], 7, width=140)
-    s.assign(u"PCH", hi, 8)
 
     return s
 
@@ -80,8 +87,6 @@ def build_pilot():
     inst = s.blk(u"FB_Fetch", [(u"PCs", pc)], 2, width=90, inst=u"Fetch")
     # у экземпляра несколько выходов -- каждый берём по имени
     s.assign(u"GVL_CPU.OP", inst, 6, src_pin=u"OPs")
-    s.assign(u"GVL_CPU.OP1", inst, 6, src_pin=u"OP1")
-    s.assign(u"GVL_CPU.OP2", inst, 6, src_pin=u"OP2")
     s.assign(u"GVL_CPU.PC1", inst, 6, src_pin=u"PC1")
     s.assign(u"GVL_CPU.PC2", inst, 6, src_pin=u"PC2")
     return s
@@ -103,6 +108,12 @@ def main():
                  interface(inputs=INPUTS, outputs=OUTPUTS), [sf],
                  comment=u"Стадия выборки MOS 6502")
     write(u"FB_Fetch", xf)
+
+    so = build_fetchop()
+    xo = pou_xml(u"FB_FetchOp", u"functionBlock",
+                 interface(inputs=IN_OP, outputs=OUT_OP), [so],
+                 comment=u"Стадия выборки: байты операнда")
+    write(u"FB_FetchOp", xo)
 
     sp = build_pilot()
     xp = pou_xml(u"FB_CorePilot", u"functionBlock", interface(locals_=[(u"Fetch", u"FB_Fetch")]), [sp],

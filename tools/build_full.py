@@ -26,7 +26,9 @@ from opcodes import BOOL_SIGNALS, BYTE_SIGNALS, build_effects
 
 ORDER = [
     u"F_UnpackByte", u"F_PackByte", u"F_Join16", u"F_Split16", u"F_Add16",
-    u"FB_Fetch", u"FB_Decoder6502", u"FB_ALU6502", u"FB_Flags", u"FB_WriteBack",
+    u"FB_Fetch", u"FB_FetchOp", u"FB_Decoder6502", u"FB_ALU6502",
+    u"SL_VSEL", u"SL_FLG_N", u"SL_FLG_Z", u"SL_FLG_C", u"SL_FLG_V", u"SL_FLG_I",
+    u"SL_FLG_B", u"SL_FLG5", u"FB_WriteBack",
     u"SL_C1A", u"SL_C1B", u"SL_YW", u"SL_IND2", u"SL_INDP", u"SL_RELA",
     u"SL_RELC", u"SL_BRK", u"SL_SELECT12", u"SL_WDATA2",
     u"SL_STK1", u"SL_STK2", u"SL_STK3", u"SL_STK4", u"SL_SPSEL",
@@ -47,7 +49,10 @@ ADDRV = [(u"C_IMM", u"WORD"), (u"C_ZP", u"WORD"), (u"C_ZPX", u"WORD"),
          (u"WDATA", u"BYTE"), (u"BRKV", u"WORD")]
 ALUV = [(u"ALU_R", u"BYTE"), (u"CARRY", u"BOOL"), (u"V_ADD", u"BOOL"),
         (u"V_SUB", u"BOOL"), (u"N_F", u"BOOL"), (u"Z_F", u"BOOL"),
-        (u"P_NEW", u"BYTE"), (u"FZ", u"BOOL"), (u"FC", u"BOOL"), (u"TAKE", u"BOOL")]
+        (u"P_NEW", u"BYTE"), (u"FZ", u"BOOL"), (u"FC", u"BOOL"), (u"TAKE", u"BOOL"),
+        # P_WORK -- рабочая копия регистра P, которую по одному биту правят
+        # ступени SL_FLG_*; VSEL -- выбранный источник флага V
+        (u"P_WORK", u"BYTE"), (u"VSEL", u"BOOL")]
 STKV = [(u"SPM1", u"BYTE"), (u"SPM2", u"BYTE"), (u"SPM3", u"BYTE"),
         (u"SPP1", u"BYTE"), (u"SPP2", u"BYTE"), (u"SPP3", u"BYTE"),
         (u"SP_NEW", u"BYTE"),
@@ -112,6 +117,16 @@ def gvl_text():
     out.append(u"\t(* --- разрешения такта --- *)")
     for n, t in GATEV:
         out.append(u"\t%s : %s;" % (n, t))
+    # Пульт процессора. Run=FALSE по умолчанию: ядро стартует ОСТАНОВЛЕННЫМ,
+    # иначе до первого нажатия «Пуск» оно успевает выполнить мусор по адресу
+    # сброса и, например, защёлкнуть бит B в регистре P. Пуск -- оператором
+    # (HMI) или тестом (GVL_CPU.Run := TRUE + пошаговые импульсы).
+    out.append(u"\t(* --- пульт --- *)")
+    out.append(u"\tRun : BOOL := FALSE;")
+    out.append(u"\tStep_On : BOOL;")
+    out.append(u"\tStep_Pulse : BOOL;")
+    out.append(u"\tStep_Taken : BOOL;")
+    out.append(u"\tInsts : UDINT;")
     out.append(u"END_VAR")
     return u"\n".join(out) + u"\n"
 
@@ -252,7 +267,8 @@ def main():
                     continue
                 low = t.lower()
                 if u"ошибк" in low or u"требуется" in low or u"недопустим" in low \
-                        or u"неизвестн" in low or u"уже задана" in low or u"не задан" in low:
+                        or u"неизвестн" in low or u"уже задана" in low or u"не задан" in low \
+                        or u"невозможно конвертировать" in low:
                     errs.append(t)
                 elif u"завершена" in low or u"завершены" in low or u"типизировать" in low:
                     info.append(t)

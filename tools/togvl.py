@@ -25,7 +25,7 @@ ROOT = r"C:\Users\Ольга\OneDrive\Рабочий стол\CODESYS\CPM6502"
 PLCOPEN = os.path.join(ROOT, "plcopen")
 
 TARGETS = [
-    u"FB_Fetch", u"FB_Decoder6502", u"FB_ALU6502", u"FB_Flags", u"FB_WriteBack",
+    u"FB_Fetch", u"FB_FetchOp", u"FB_Decoder6502", u"FB_ALU6502", u"FB_Flags", u"FB_WriteBack",
     u"SL_C1A", u"SL_C1B", u"SL_YW", u"SL_IND2", u"SL_INDP", u"SL_RELA",
     u"SL_RELC", u"SL_BRK", u"SL_SELECT12", u"SL_WDATA2",
     u"SL_STK1", u"SL_STK2", u"SL_STK3", u"SL_STK4", u"SL_SPSEL",
