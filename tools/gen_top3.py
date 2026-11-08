@@ -71,6 +71,9 @@ def fb_addr1():
          [(u"OFFW", R(s, u"OFFW")), (u"PC2", R(s, u"PC2"))], 10)
     call(s, u"SL_BRK", u"A7", [], 12, w=100)
     W(s, u"C_STK", R(s, u"C_ABS"), 13)
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
 
@@ -83,6 +86,9 @@ def fb_select():
          [(u"ADDR_MODE", R(s, u"ADDR_MODE")), (u"EFF", R(s, u"EFF")),
           (u"OP1", R(s, u"OP1"))], 3, w=120)
     # (SL_WDATA2 dlya imm bеret OP1 -- sm. shapku modulya)
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
 
@@ -102,6 +108,9 @@ def fb_stack():
          [(u"PCs", R(s, u"PC")), (u"LEN", R(s, u"LEN"))], 8, w=100)
     call(s, u"SL_JRET", u"Jr",
          [(u"STK_R0", R(s, u"STK_R0")), (u"STK_R1", R(s, u"STK_R1"))], 9, w=110)
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
 
@@ -122,6 +131,9 @@ def fb_aluflags():
     call(s, u"SL_BRNE", u"Br",
          [(u"COND", R(s, u"COND")), (u"FZ", R(s, u"FZ")), (u"FC", R(s, u"FC"))],
          5, w=110)
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
 
@@ -146,6 +158,9 @@ def fb_pcwb():
     # Запись регистров вынесена в отдельный POU FB_RegFile:
     # по конспекту (2.5) чтение ячейки в той же сети, где она
     # пишется, даёт старое значение.
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
 
@@ -192,6 +207,9 @@ def fb_store():
              s.blk(u"SEL", [(u"G", R(s, u"WR_EN2")),
                             (u"IN0", s.ref(u"GVL_MEM.Mem[GVL_CPU.WR2]", 7)),
                             (u"IN1", R(s, u"WRD2"))], 7), 8)
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
 
@@ -210,6 +228,9 @@ def fb_regfile():
     W(s, u"P", s.blk(u"SEL", [(u"G", R(s, u"LD_P_E")), (u"IN0", R(s, u"P_NEW")), (u"IN1", R(s, u"REG_WR"))], 7), 8)
     W(s, u"SP", s.blk(u"SEL", [(u"G", R(s, u"LD_SP_E")), (u"IN0", R(s, u"SP")), (u"IN1", R(s, u"SP_NEW"))], 9), 10)
     W(s, u"PC", s.blk(u"SEL", [(u"G", s.const(u"TRUE", 11)), (u"IN0", R(s, u"PC")), (u"IN1", R(s, u"PC_NEW"))], 11), 12)
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
 
@@ -228,6 +249,9 @@ def fb_latch():
     W(s, u"P_ADV", R(s, u"ADV"), 9)
     W(s, u"P_KEEP", R(s, u"PC"), 11)
     W(s, u"PULL_LO", s.ref(G.MEM + u".Mem[STK_R0]", 13), 14)
+    # Технический выход: гарантирует, что CODESYS сгенерирует и
+    # исполнит тело слоя (правило 3 конспекта).
+    s.assign(u"OUT", R(s, u"Enable"), 22)
     return s
 
 
@@ -245,14 +269,22 @@ def fb_core():
     for sig in (u"LD_A", u"LD_X", u"LD_Y", u"LD_P", u"LD_SP", u"WR_MEM"):
         W(s, sig + u"_E",
           s.blk(u"AND", [(u"IN1", R(s, sig)), (u"IN2", R(s, u"Enable"))], 4), 4)
-    call(s, u"FB_CPU_Addr1", u"S1", [(u"Enable", s.const(u"TRUE", 0))], 5, w=140)
-    call(s, u"FB_CPU_Select", u"S2", [(u"Enable", s.const(u"TRUE", 0))], 6, w=140)
-    call(s, u"FB_CPU_Stack", u"S3", [(u"Enable", s.const(u"TRUE", 0))], 7, w=140)
-    call(s, u"FB_CPU_AluFlags", u"S4", [(u"Enable", s.const(u"TRUE", 0))], 8, w=140)
-    call(s, u"FB_Latch", u"S5L", [(u"Enable", s.const(u"TRUE", 0))], 9, w=140)
-    call(s, u"FB_CPU_PcWb", u"S5", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
-    call(s, u"FB_CPU_Store", u"S6", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
-    call(s, u"FB_RegFile", u"S7", [(u"Enable", s.const(u"TRUE", 0))], 11, w=140)
+    ch = call(s, u"FB_CPU_Addr1", u"S1", [(u"Enable", s.const(u"TRUE", 0))], 5, w=140)
+    W(s, u"Chain1", ch, 1)
+    ch = call(s, u"FB_CPU_Select", u"S2", [(u"Enable", s.const(u"TRUE", 0))], 6, w=140)
+    W(s, u"Chain2", ch, 1)
+    ch = call(s, u"FB_CPU_Stack", u"S3", [(u"Enable", s.const(u"TRUE", 0))], 7, w=140)
+    W(s, u"Chain3", ch, 1)
+    ch = call(s, u"FB_CPU_AluFlags", u"S4", [(u"Enable", s.const(u"TRUE", 0))], 8, w=140)
+    W(s, u"Chain4", ch, 1)
+    ch = call(s, u"FB_Latch", u"S5L", [(u"Enable", s.const(u"TRUE", 0))], 9, w=140)
+    W(s, u"Chain5", ch, 1)
+    ch = call(s, u"FB_CPU_PcWb", u"S5", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
+    W(s, u"Chain6", ch, 1)
+    ch = call(s, u"FB_CPU_Store", u"S6", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
+    W(s, u"Chain7", ch, 1)
+    ch = call(s, u"FB_RegFile", u"S7", [(u"Enable", s.const(u"TRUE", 0))], 11, w=140)
+    W(s, u"Chain8", ch, 1)
     W(s, u"Done", R(s, u"Enable"), 11)
     return s
 
@@ -277,19 +309,19 @@ def main():
 
     write(u"FB_CPU_Addr1", pou_xml(
         u"FB_CPU_Addr1", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"A1", u"SL_C1A", u"A2", u"SL_C1B", u"YW1", u"SL_YW",
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=pouloc(u"A1", u"SL_C1A", u"A2", u"SL_C1B", u"YW1", u"SL_YW",
                                  u"A3", u"SL_IND2", u"A4", u"SL_INDP", u"A5", u"SL_RELA",
                                  u"A6", u"SL_RELC", u"A7", u"SL_BRK")),
         [fb_addr1()], u"кандидаты адресов"))
 
     write(u"FB_CPU_Select", pou_xml(
         u"FB_CPU_Select", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"Pick", u"SL_SELECT12", u"Wd", u"SL_WDATA2")),
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=pouloc(u"Pick", u"SL_SELECT12", u"Wd", u"SL_WDATA2")),
         [fb_select()], u"выбор адреса"))
 
     write(u"FB_CPU_Stack", pou_xml(
         u"FB_CPU_Stack", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"St1", u"SL_STK1", u"St2", u"SL_STK2",
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=pouloc(u"St1", u"SL_STK1", u"St2", u"SL_STK2",
                                  u"St3", u"SL_STK3", u"St4", u"SL_STK4",
                                  u"SpSel", u"SL_SPSEL", u"Adv", u"SL_ADV",
                                  u"Jr", u"SL_JRET")),
@@ -297,13 +329,13 @@ def main():
 
     write(u"FB_CPU_AluFlags", pou_xml(
         u"FB_CPU_AluFlags", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"Alu", u"FB_ALU6502", u"Flg", u"FB_Flags",
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=pouloc(u"Alu", u"FB_ALU6502", u"Flg", u"FB_Flags",
                                  u"Br", u"SL_BRNE")),
         [fb_aluflags()], u"АЛУ и флаги"))
 
     write(u"FB_CPU_PcWb", pou_xml(
         u"FB_CPU_PcWb", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], locals_=pouloc(u"Bt", u"SL_BRN2", u"Ps", u"SL_PCSEL",
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=pouloc(u"Bt", u"SL_BRN2", u"Ps", u"SL_PCSEL",
                                  u"Wb", u"FB_WriteBack") +
                   [(u"N_A", u"BYTE"), (u"N_X", u"BYTE"), (u"N_Y", u"BYTE"),
                    (u"N_P", u"BYTE"), (u"N_SP", u"BYTE"), (u"N_PC", u"WORD")]),
@@ -320,17 +352,17 @@ def main():
 
     write(u"FB_CPU_Store", pou_xml(
         u"FB_CPU_Store", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], locals_=[]),
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=[]),
         [fb_store()], u"запись в память"))
 
     write(u"FB_Latch", pou_xml(
         u"FB_Latch", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], locals_=[]),
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=[]),
         [fb_latch()], u"защёлкивание значений"))
 
     write(u"FB_RegFile", pou_xml(
         u"FB_RegFile", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], locals_=[]),
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=[]),
         [fb_regfile()], u"запись регистров"))
 
     write(u"PRG_PLC", pou_xml(
