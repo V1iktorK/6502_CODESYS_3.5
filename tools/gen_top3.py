@@ -354,6 +354,8 @@ def fb_core():
     W(s, u"Chain5", ch, 1)
     ch = call(s, u"FB_CPU_PcWb", u"S5", [(u"Enable", R(s, u"Enable"))], 10, w=140)
     W(s, u"Chain6", ch, 1)
+    ch = call(s, u"SL_REGSEL", u"Srs", [], 9, w=110)
+    W(s, u"Chain13", ch, 1)
     ch = call(s, u"SL_STDATA", u"Sd", [], 10, w=110)
     W(s, u"Chain12", ch, 1)
     ch = call(s, u"FB_CPU_Store", u"S6", [(u"Enable", R(s, u"Enable"))], 10, w=140)
@@ -436,7 +438,7 @@ def main():
                                  u"Dec", u"FB_Decoder6502",
                                  u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
                                  u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
-                                 u"Prep", u"SL_PREP", u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"Sd", u"SL_STDATA", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"Sw", u"SL_STWRITE", u"S7", u"FB_RegFile")
+                                 u"Prep", u"SL_PREP", u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"Srs", u"SL_REGSEL", u"Sd", u"SL_STDATA", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"Sw", u"SL_STWRITE", u"S7", u"FB_RegFile")
                   + [(u"STaken", u"BOOL")]),
         [fb_core()], u"такт"))
 

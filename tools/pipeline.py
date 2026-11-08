@@ -25,6 +25,8 @@ STEPS = [
     u"gen_stwrite.py",
     u"gen_prep.py",
     u"gen_stdata.py",
+    u"gen_regsel.py",
+    u"gen_select.py",
     u"gen_step2.py",
     u"gen_step3.py",
     u"gen_step4.py",

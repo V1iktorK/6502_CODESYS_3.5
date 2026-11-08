@@ -155,7 +155,7 @@ def main():
                 wrb(pc0 + i, b)
             # останов в конце программы и по ожидаемому адресу перехода
             park(end)
-            if exp[u"pc"] != end and end < exp[u"pc"] < end + 0x20:
+            if exp[u"pc"] != end and not (pc0 <= exp[u"pc"] < end + 3):
                 park(exp[u"pc"])
             wr(u"GVL_CPU.PC", u"16#%04X" % pc0)
             # Регистры ядра пересчитываются каждый скан, и одна «запоздавшая»
@@ -187,7 +187,10 @@ def main():
                     for i, b in enumerate(code):
                         wrb(pc0 + i, b)
                     park(end)
-                    if exp[u"pc"] != end and end < exp[u"pc"] < end + 0x20:
+                    # Парковка по ожидаемому адресу ставится ВСЕГДА (кроме случая,
+                    # когда он попадает внутрь самой программы): иначе ядро
+                    # уходило в нули, выполняло BRK и PC/SP становились мусором.
+                    if exp[u"pc"] != end and not (pc0 <= exp[u"pc"] < end + 3):
                         park(exp[u"pc"])
                     for k, fmt, v in want:
                         wr(k, fmt % v)
@@ -202,6 +205,7 @@ def main():
                     stops.add(exp[u"pc"])
                 parked = False
                 prev = None
+                probe = None
                 for _ in range(60):
                     time.sleep(0.02)
                     pc = rd(u"GVL_CPU.PC")
@@ -232,6 +236,9 @@ def main():
                     bad.append(u"Mem[%04X] ожид %02X факт %s" % (a, v, g))
             if not parked and not bad:
                 bad.append(u"нет останова (PC=%s)" % got.get(u"pc"))
+            if bad and probe is not None:
+                bad.append(u"в такте: SP_MODE=%s ADDR_MODE=%s SRC=%s REG_WR=%s WR_EN0=%s WR0=%s"
+                           % probe)
             ok = not bad
             results.append((name, ok, bad))
             log(u"  %-30s %s%s" % (name, u"PASS" if ok else u"FAIL",
