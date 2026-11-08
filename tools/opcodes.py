@@ -124,7 +124,10 @@ def build_effects():
                  USE_CARRY=(mn != u"CMP"), SET_V=(mn != u"CMP"),
                  SRC=SRC_ALU,
                  ALU_A=ALU_A, ALU_B=ALU_B_MDR,
-                 F_ADD=(mn == u"ADC"), F_SUB=(mn == u"SBC"), F_CMP=(mn == u"CMP"))
+                 F_ADD=(mn == u"ADC"), F_SUB=(mn == u"SBC"), F_CMP=(mn == u"CMP"),
+                 # CMP na 6502 vypolnyaet A - M s perenosom vhodа VSEGDA 1
+                 # (kak SBC bez zaima); bez CIN_FORCE sravnenie davalo C=0
+                 CIN_FORCE=(mn == u"CMP"))
         elif mn == u"INX":
             set_(op, LD_X=True, SET_NZ=True, SRC=SRC_ALU, ALU_A=ALU_X, ALU_B=ALU_B_ONE, F_ADD=True)
         elif mn == u"INY":

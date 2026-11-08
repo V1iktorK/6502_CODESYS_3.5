@@ -242,7 +242,6 @@ def build_alu():
     op_any = ORB(s, [s.ref(u"F_ADD", 0), s.ref(u"F_SUB", 0), s.ref(u"F_CMP", 0)], 2)
     alu_a = SELb(s, op_any, s.const(B0, 2), alu_a, 3)
     s.assign(u"ALU_AX", alu_a, 3)
-    s.assign(u"ALU_BX", alu_b, 3)
 
     isub = SELb(s, s.ref(u"F_SUB", 0), s.ref(u"F_CMP", 0), s.const(T, 1), 3)
     s.assign(u"ISUB", isub, 4)
@@ -250,6 +249,10 @@ def build_alu():
     # ---- вычитание через дополнение
     binv = s.blk(u"XOR", [(u"IN1", alu_b), (u"IN2", s.const(BFF, 3))], 4)
     bx = SELb(s, isub, alu_b, binv, 5)
+    # Наружу (для ступени SL_CARRY) уходит ИМЕННО этот операнд: при вычитании
+    # он дополненный, поэтому перенос считается как (AX + BX + cin) > 255.
+    # Раньше здесь выводился невывернутый alu_b, и SBC получал C=1 вместо 0.
+    s.assign(u"ALU_BX", bx, 6)
 
     # ---- перенос на входе: бит 0 регистра P, разрешённый сигналом USE_CARRY,
     # либо принудительная единица (CIN_FORCE) для DEX/DEY: вычитание на 6502
@@ -286,8 +289,10 @@ def build_alu():
     s.assign(u"N_F", s.blk(u"GE", [(u"IN1", s2), (u"IN2", s.const(B80, 9))], 10), 11)
     s.assign(u"Z_F", EQv(s, s2, B0, 10), 11)
 
-    L = [(u"ALU_AX", u"BYTE"), (u"ALU_BX", u"BYTE"), 
-         (u"ALU_CIN", u"BOOL"), (u"CARRY1", u"BOOL"), (u"CARRY2", u"BOOL")]
+    # ALU_AX/ALU_BX/ALU_CIN объявлены ВЫХОДАМИ (см. interface ниже): их читает
+    # отдельная ступень SL_CARRY, чтобы перенос считался плоской логикой в
+    # другом ПОУ -- цепочка LT внутри SEL в этом листе теряется.
+    L = [(u"CARRY1", u"BOOL"), (u"CARRY2", u"BOOL")]
     return s, L
 
 
@@ -463,24 +468,24 @@ def build_writeback():
 
     srcs = [(0, a), (1, xv), (2, yv), (3, pnew), (4, alur),
             (5, pcl), (6, pch), (7, pull)]
-    # Выбор источника записи. Вложенные generic-блоки (SEL внутри SEL) CODESYS
-    # не типизирует ("Неизвестный тип ... __B..."), поэтому каждый шаг выводится
-    # в ИМЕНОВАННУЮ переменную RWn, и следующий шаг читает уже имя, а не блок.
-    cur = s.const(B0, 2)
-    for i, (k, c) in enumerate(reversed(srcs)):
-        g = EQv(s, srcc, u"BYTE#%d" % k, 1)
-        # SEL(G, IN0, IN1): pri G=TRUE берётся IN1, poetoму IN1 = kandidat
-        cur = SELb(s, g, cur, c, 3 + k)
-        nm = u"RW%d" % (7 - k)
-        s.assign(nm, cur, 12 + i)
-        cur = s.ref(nm, 12 + i)
+    # Выбор источника записи СВОБОДНЫМ объединением: ровно одно условие SRC=k
+    # истинно, поэтому результат -- ИЛИ по (SRC=k ? источник : 0).
+    # Раньше здесь была цепочка SEL, где каждый следующий шаг читал именованную
+    # переменную RWn, записанную в ЭТОМ ЖЕ ПОУ, -- а такое чтение отдаёт старое
+    # значение (правило 2.5). Из-за этого SRC=3 (PHP/BRK) не доходил и в стек
+    # вместо регистра P уходил A.
+    parts = []
+    for k, c in srcs:
+        g = EQv(s, srcc, u"BYTE#%d" % k, 2)
+        parts.append(s.blk(u"SEL", [(u"G", g), (u"IN0", s.const(B0, 3)),
+                                    (u"IN1", c)], 3 + k))
+    cur = ORT(s, parts, 12)
     s.assign(u"REG_WR", cur, 22)
 
-    # Запись регистров вынесена в слой композиции FB_CPU_PcWb:
-    # в этом листе CODESYS не типизировал SEL с регистровыми именами.
+    # Запись регистров вынесена в слой композиции FB_CPU_PcWb.
     s.assign(CPU + u".REG_WR", cur, 22)
 
-    return s, [(u"RW%d" % k, u"BYTE") for k in range(8)]
+    return s, []
 
 
 # ============================================================ 7. КОМПОЗИЦИЯ
@@ -654,6 +659,7 @@ def main():
                           (u"WDATA", u"BYTE"), (u"ALU_A", u"BYTE"), (u"ALU_B", u"BYTE"),
                           (u"F_SUB", u"BOOL"), (u"F_CMP", u"BOOL"), (u"USE_CARRY", u"BOOL")],
                   outputs=[(u"ALU_R", u"BYTE"), (u"CARRY", u"BOOL"), (u"V_ADD", u"BOOL"),
+                           (u"ALU_AX", u"BYTE"), (u"ALU_BX", u"BYTE"), (u"ALU_CIN", u"BOOL"),
                            (u"V_SUB", u"BOOL"), (u"N_F", u"BOOL"), (u"Z_F", u"BOOL"),
                            (u"ISUB", u"BOOL")],
                   locals_=L),

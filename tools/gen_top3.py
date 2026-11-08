@@ -130,6 +130,7 @@ def fb_aluflags():
           (u"ALU_B", R(s, u"ALU_B")), (u"F_SUB", R(s, u"F_SUB")),
           (u"F_CMP", R(s, u"F_CMP")), (u"USE_CARRY", R(s, u"USE_CARRY"))],
          1, w=140)
+    call(s, u"SL_CARRY", u"Cy", [], 2, w=110)
     # Регистр P собирается в ОТДЕЛЬНОМ слое FB_CPU_Flags: ему нужен REG_WR,
     # который появляется только после FB_WriteBack (см. порядок вызовов в ядре).
     call(s, u"SL_BRNE", u"Br",
@@ -420,7 +421,7 @@ def main():
     write(u"FB_CPU_AluFlags", pou_xml(
         u"FB_CPU_AluFlags", u"functionBlock",
         interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")],
-                  locals_=pouloc(u"Alu", u"FB_ALU6502", u"Vsl", u"SL_VSEL",
+                  locals_=pouloc(u"Alu", u"FB_ALU6502", u"Cy", u"SL_CARRY", u"Vsl", u"SL_VSEL",
                                  u"Fn", u"SL_FLG_N", u"Fz", u"SL_FLG_Z",
                                  u"Fc", u"SL_FLG_C", u"Fv", u"SL_FLG_V",
                                  u"Fi", u"SL_FLG_I", u"Fb2", u"SL_FLG_B",

@@ -21,6 +21,7 @@ STEPS = [
     u"gen_cpu_split.py",
     u"gen_fetch.py",
     u"gen_wdata.py",
+    u"gen_carry.py",
     u"gen_step2.py",
     u"gen_step3.py",
     u"gen_step4.py",
