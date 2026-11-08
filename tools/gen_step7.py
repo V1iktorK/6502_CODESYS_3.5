@@ -22,8 +22,11 @@ OUT = os.path.join(ROOT, "plcopen")
 MEM = G.MEM
 W0, W1 = G.W0, G.W1
 
-SP_CAND = [u"S_KEEP", u"S_P1", u"S_M1", u"S_M3", u"S_P3"]
-SP_CODES = [0, 1, 2, 5, 6]
+SP_CAND = [u"S_KEEP", u"S_P1", u"S_M1", u"S_M2", u"S_P2", u"S_M3", u"S_P3"]
+# Коды SP_MODE из opcodes.py: 0 нет, 1 push1, 2 pull1, 3 push2 (JSR),
+# 4 pull2 (RTS), 5 push3 (BRK), 6 pull3 (RTI). Раньше кодов 3 и 4 здесь не было
+# вовсе, и при JSR/RTS SP_NEW собирался как 0 (все кандидаты давали 0).
+SP_CODES = [0, 1, 2, 3, 4, 5, 6]
 
 
 def sl_relc():

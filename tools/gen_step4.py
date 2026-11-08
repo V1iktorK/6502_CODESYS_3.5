@@ -32,8 +32,11 @@ def rel_a():
     s = Sheet(u"SL_REL_A: знаковое расширение через WORD-выбор")
     op1 = s.ref(u"OP1", 0)
     sgn = s.blk(u"GT", [(u"IN1", op1), (u"IN2", s.const(u"BYTE#16#7F", 1))], 1)
-    msk = s.blk(u"SEL", [(u"G", sgn), (u"IN0", s.const(u"WORD#16#FF00", 2)),
-                         (u"IN1", s.const(W0, 2))], 2)
+    # CODESYS: G=TRUE берёт IN1. Поэтому отрицательное смещение (OP1 >= $80)
+    # должно давать маску $FF00, а положительное -- ноль. Раньше было наоборот,
+    # и переход вперёд уезжал на $FFxx (PC=$0107 вместо $0207).
+    msk = s.blk(u"SEL", [(u"G", sgn), (u"IN0", s.const(W0, 2)),
+                         (u"IN1", s.const(u"WORD#16#FF00", 2))], 2)
     offw = s.blk(u"ADD", [(u"IN1", s.blk(u"BYTE_TO_WORD", [(u"IN", op1)], 2, width=140)),
                           (u"IN2", msk)], 3)
     s.assign(u"OFFW", offw, 5)
@@ -44,8 +47,9 @@ def rel_b():
     s = Sheet(u"SL_REL_B: знаковое расширение через LT")
     op1 = s.ref(u"OP1", 0)
     sgn = s.blk(u"LT", [(u"IN1", op1), (u"IN2", s.const(u"BYTE#16#80", 1))], 1)
-    msk = s.blk(u"SEL", [(u"G", sgn), (u"IN0", s.const(W0, 2)),
-                         (u"IN1", s.const(u"WORD#16#FF00", 2))], 2)
+    # см. комментарий в rel_a: при G=TRUE берётся IN1
+    msk = s.blk(u"SEL", [(u"G", sgn), (u"IN0", s.const(u"WORD#16#FF00", 2)),
+                         (u"IN1", s.const(W0, 2))], 2)
     offw = s.blk(u"ADD", [(u"IN1", s.blk(u"BYTE_TO_WORD", [(u"IN", op1)], 2, width=140)),
                           (u"IN2", msk)], 3)
     s.assign(u"OFFW", offw, 5)

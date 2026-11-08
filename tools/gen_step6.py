@@ -33,23 +33,31 @@ def sl_t1():
 
 
 def sl_brne():
-    s = Sheet(u"SL_BRNE: условие через NE/AND/OR")
+    s = Sheet(u"SL_BRNE: условие перехода по COND")
     cond = s.ref(u"COND", 0)
     fz = s.ref(u"FZ", 0)
     fc = s.ref(u"FC", 0)
-    e0 = s.blk(u"EQ", [(u"IN1", cond), (u"IN2", s.const(u"BYTE#0", 1))], 1)
-    e1 = s.blk(u"EQ", [(u"IN1", cond), (u"IN2", s.const(u"BYTE#1", 1))], 1)
-    e2 = s.blk(u"EQ", [(u"IN1", cond), (u"IN2", s.const(u"BYTE#2", 1))], 1)
-    e3 = s.blk(u"EQ", [(u"IN1", cond), (u"IN2", s.const(u"BYTE#3", 1))], 1)
-    nz = s.blk(u"NE", [(u"IN1", fz), (u"IN2", s.const(F, 2))], 2)
-    nc = s.blk(u"NE", [(u"IN1", fc), (u"IN2", s.const(F, 2))], 2)
-    a0 = s.blk(u"AND", [(u"IN1", e0), (u"IN2", fz)], 2)
-    a1 = s.blk(u"AND", [(u"IN1", e1), (u"IN2", nz)], 2)
-    a2 = s.blk(u"AND", [(u"IN1", e2), (u"IN2", fc)], 2)
-    a3 = s.blk(u"AND", [(u"IN1", e3), (u"IN2", nc)], 2)
-    o01 = s.blk(u"OR", [(u"IN1", a0), (u"IN2", a1)], 4)
-    o23 = s.blk(u"OR", [(u"IN1", a2), (u"IN2", a3)], 4)
-    s.assign(u"TAKE", s.blk(u"OR", [(u"IN1", o01), (u"IN2", o23)], 6), 7)
+    fn = s.ref(u"FN", 0)
+    e = [s.blk(u"EQ", [(u"IN1", cond), (u"IN2", s.const(u"BYTE#%d" % k, 1))], 1)
+         for k in range(6)]
+    # ВАЖНО: отрицание флага -- это NE(флаг, TRUE), а не NE(флаг, FALSE)
+    # (последнее просто повторяет сам флаг). Из-за этой ошибки BNE/BCC срабатывали
+    # наоборот, а BMI/BPL не были реализованы вовсе (COND 4 и 5 отсутствовали).
+    nz = s.blk(u"NE", [(u"IN1", fz), (u"IN2", s.ref(u"TRUE", 2))], 2)
+    nc = s.blk(u"NE", [(u"IN1", fc), (u"IN2", s.ref(u"TRUE", 3))], 3)
+    nn = s.blk(u"NE", [(u"IN1", fn), (u"IN2", s.ref(u"TRUE", 3))], 3)
+    a0 = s.blk(u"AND", [(u"IN1", e[0]), (u"IN2", fz)], 4)
+    a1 = s.blk(u"AND", [(u"IN1", e[1]), (u"IN2", nz)], 4)
+    a2 = s.blk(u"AND", [(u"IN1", e[2]), (u"IN2", fc)], 5)
+    a3 = s.blk(u"AND", [(u"IN1", e[3]), (u"IN2", nc)], 5)
+    a4 = s.blk(u"AND", [(u"IN1", e[4]), (u"IN2", fn)], 6)
+    a5 = s.blk(u"AND", [(u"IN1", e[5]), (u"IN2", nn)], 6)
+    o0 = s.blk(u"OR", [(u"IN1", a0), (u"IN2", a1)], 7)
+    o1 = s.blk(u"OR", [(u"IN1", a2), (u"IN2", a3)], 7)
+    o2 = s.blk(u"OR", [(u"IN1", a4), (u"IN2", a5)], 8)
+    s.assign(u"TAKE", s.blk(u"OR", [(u"IN1", s.blk(u"OR", [(u"IN1", o0),
+                                                          (u"IN2", o1)], 8)),
+                                    (u"IN2", o2)], 9), 10)
     return s, []
 
 
@@ -71,7 +79,7 @@ def main():
     s, L = sl_brne()
     write(u"SL_BRNE", pou_xml(u"SL_BRNE", u"functionBlock",
                               interface(inputs=[(u"COND", u"BYTE"), (u"FZ", u"BOOL"),
-                                                (u"FC", u"BOOL")],
+                                                (u"FC", u"BOOL"), (u"FN", u"BOOL")],
                                         outputs=[(u"TAKE", u"BOOL")], locals_=L),
                               [s], u"условие NE"))
     print(u"готово")

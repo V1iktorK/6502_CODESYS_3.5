@@ -110,6 +110,7 @@ def fb_stack():
     call(s, u"SL_SPSEL", u"SpSel",
          [(u"SP_MODE", R(s, u"SP_MODE")), (u"S_KEEP", R(s, u"SP")),
           (u"S_P1", R(s, u"SPM1")), (u"S_M1", R(s, u"SPP1")),
+          (u"S_M2", R(s, u"SPM2")), (u"S_P2", R(s, u"SPP2")),
           (u"S_M3", R(s, u"SPM3")), (u"S_P3", R(s, u"SPP3"))], 6, w=150)
     call(s, u"SL_ADV", u"Adv",
          [(u"PCs", R(s, u"PC")), (u"LEN", R(s, u"LEN"))], 8, w=100)
@@ -132,7 +133,8 @@ def fb_aluflags():
     # Регистр P собирается в ОТДЕЛЬНОМ слое FB_CPU_Flags: ему нужен REG_WR,
     # который появляется только после FB_WriteBack (см. порядок вызовов в ядре).
     call(s, u"SL_BRNE", u"Br",
-         [(u"COND", R(s, u"COND")), (u"FZ", R(s, u"FZ")), (u"FC", R(s, u"FC"))],
+         [(u"COND", R(s, u"COND")), (u"FZ", R(s, u"FZ")), (u"FC", R(s, u"FC")),
+          (u"FN", R(s, u"FN"))],
          5, w=110)
     # Технический выход: гарантирует, что CODESYS сгенерирует и
     # исполнит тело слоя (правило 3 конспекта).
@@ -221,8 +223,14 @@ def fb_store():
                                                                        (u"IN2", stack_w)], 3))], 3))], 4)
     W(s, u"WR0", s.blk(u"SEL", [(u"G", stack_w), (u"IN0", R(s, u"EFF")),
                                 (u"IN1", R(s, u"STK_A0"))], 4), 5)
-    W(s, u"WRD0", s.blk(u"SEL", [(u"G", push3), (u"IN0", R(s, u"REG_WR")),
-                                 (u"IN1", R(s, u"P_NEW"))], 5), 6)
+    # Данные порта 0: для BRK (push3) -- регистр P, для JSR (push2) -- СТАРШИЙ
+    # байт адреса возврата PCH (он кладётся первым, по адресу SP), иначе --
+    # обычный источник записи SRC. Младший PCL уходит портом 1 (адрес SP-1).
+    W(s, u"WRD0", s.blk(u"SEL", [(u"G", push3),
+                                 (u"IN0", s.blk(u"SEL", [(u"G", R(s, u"IS_JSR")),
+                                                         (u"IN0", R(s, u"REG_WR")),
+                                                         (u"IN1", R(s, u"PCH"))], 5)),
+                                 (u"IN1", R(s, u"P_NEW"))], 6), 7)
     W(s, u"WR_EN0", en0, 6)
     s.assign(u"GVL_MEM.Mem[GVL_CPU.WR0]",
              s.blk(u"SEL", [(u"G", R(s, u"WR_EN0")),
@@ -234,7 +242,8 @@ def fb_store():
                          (u"IN2", s.blk(u"OR", [(u"IN1", R(s, u"IS_JSR")),
                                                 (u"IN2", push3)], 3))], 4)
     W(s, u"WR1", R(s, u"STK_A1"), 5)
-    W(s, u"WRD1", R(s, u"PCH"), 6)
+    W(s, u"WRD1", s.blk(u"SEL", [(u"G", push3), (u"IN0", R(s, u"PCL")),
+                                            (u"IN1", R(s, u"PCH"))], 6), 7)
     W(s, u"WR_EN1", en1, 6)
     s.assign(u"GVL_MEM.Mem[GVL_CPU.WR1]",
              s.blk(u"SEL", [(u"G", R(s, u"WR_EN1")),
