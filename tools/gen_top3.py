@@ -224,13 +224,11 @@ def fb_store():
                                                                        (u"IN2", stack_w)], 3))], 3))], 4)
     W(s, u"WR0", s.blk(u"SEL", [(u"G", stack_w), (u"IN0", R(s, u"EFF")),
                                 (u"IN1", R(s, u"STK_A0"))], 4), 5)
-    # Данные порта 0. ВАЖНО: вложенный SEL внутрь входа SEL CODESYS в этом
-    # проекте не типизирует (конспект 2.8), поэтому выбор разворачивается в
-    # ДВА плоских присваивания через промежуточную ячейку GVL_CPU.STK_D0.
+    # Данные порта 0. STK_D0 (IS_JSR ? PCH : REG_WR) считает ОТДЕЛЬНАЯ ступень
+    # SL_STDATA, которая выполняется перед этим слоем: иначе запись и чтение
+    # одной ячейки внутри одного ПОУ дают старое значение (правило 2.5) и в
+    # стек уходило значение прошлого такта.
     # Для BRK (push3) в стек идёт P, для JSR (push2) -- PCH, иначе SRC.
-    W(s, u"STK_D0", s.blk(u"SEL", [(u"G", R(s, u"IS_JSR")),
-                                   (u"IN0", R(s, u"REG_WR")),
-                                   (u"IN1", R(s, u"PCH"))], 5), 6)
     W(s, u"WRD0", s.blk(u"SEL", [(u"G", push3),
                                  (u"IN0", R(s, u"STK_D0")),
                                  (u"IN1", R(s, u"P_NEW"))], 7), 8)
@@ -334,33 +332,27 @@ def fb_core():
     call(s, u"FB_FetchOp", u"Fop",
          [(u"PC1", R(s, u"PC1")), (u"PC2", R(s, u"PC2"))], 2, w=120)
     call(s, u"FB_Decoder6502", u"Dec", [(u"Op", R(s, u"OPs"))], 3, w=170)
-    # Байтовые сигналы — из таблицы декодирования (данные в GVL_TABLE).
-    # SP_MODE пропускается через разрешение такта: иначе при Run=FALSE ядро
-    # продолжало бы толкать байты в стек каждый скан (SP_MODE не зависит от PC).
-    for sig in (u"ADDR_MODE", u"LEN", u"SRC", u"ALU_A", u"ALU_B",
-                u"PC_MODE", u"COND"):
-        W(s, sig, s.ref(u"GVL_TABLE.%s[GVL_CPU.OPs]" % sig, 4), 4)
-    W(s, u"SP_MODE",
-      s.blk(u"SEL", [(u"G", R(s, u"Enable")), (u"IN0", s.const(u"BYTE#0", 4)),
-                     (u"IN1", s.ref(u"GVL_TABLE.SP_MODE[GVL_CPU.OPs]", 4))], 4), 4)
-
-    # Разрешения такта: сигнал И Enable (без этого регистры не пишутся)
-    for sig in (u"LD_A", u"LD_X", u"LD_Y", u"LD_P", u"LD_SP", u"WR_MEM"):
-        W(s, sig + u"_E",
-          s.blk(u"AND", [(u"IN1", R(s, sig)), (u"IN2", R(s, u"Enable"))], 4), 4)
-    ch = call(s, u"FB_CPU_Addr1", u"S1", [(u"Enable", s.const(u"TRUE", 0))], 5, w=140)
+    # Сигналы дешифратора (ADDR_MODE..COND, SP_MODE) и разрешения такта
+    # (LD_*_E, WR_MEM_E) вычисляет ОТДЕЛЬНАЯ ступень SL_PREP. Раньше они
+    # писались прямо в этом листе обычными присвоениями, а слои читали их в
+    # том же скане и видели значения прошлого такта.
+    ch = call(s, u"SL_PREP", u"Prep", [(u"Enable", R(s, u"Enable"))], 4, w=120)
+    W(s, u"Chain11", ch, 1)
+    ch = call(s, u"FB_CPU_Addr1", u"S1", [(u"Enable", R(s, u"Enable"))], 5, w=140)
     W(s, u"Chain1", ch, 1)
-    ch = call(s, u"FB_CPU_Select", u"S2", [(u"Enable", s.const(u"TRUE", 0))], 6, w=140)
+    ch = call(s, u"FB_CPU_Select", u"S2", [(u"Enable", R(s, u"Enable"))], 6, w=140)
     W(s, u"Chain2", ch, 1)
-    ch = call(s, u"FB_CPU_Stack", u"S3", [(u"Enable", s.const(u"TRUE", 0))], 7, w=140)
+    ch = call(s, u"FB_CPU_Stack", u"S3", [(u"Enable", R(s, u"Enable"))], 7, w=140)
     W(s, u"Chain3", ch, 1)
-    ch = call(s, u"FB_CPU_AluFlags", u"S4", [(u"Enable", s.const(u"TRUE", 0))], 8, w=140)
+    ch = call(s, u"FB_CPU_AluFlags", u"S4", [(u"Enable", R(s, u"Enable"))], 8, w=140)
     W(s, u"Chain4", ch, 1)
-    ch = call(s, u"FB_Latch", u"S5L", [(u"Enable", s.const(u"TRUE", 0))], 9, w=140)
+    ch = call(s, u"FB_Latch", u"S5L", [(u"Enable", R(s, u"Enable"))], 9, w=140)
     W(s, u"Chain5", ch, 1)
-    ch = call(s, u"FB_CPU_PcWb", u"S5", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
+    ch = call(s, u"FB_CPU_PcWb", u"S5", [(u"Enable", R(s, u"Enable"))], 10, w=140)
     W(s, u"Chain6", ch, 1)
-    ch = call(s, u"FB_CPU_Store", u"S6", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
+    ch = call(s, u"SL_STDATA", u"Sd", [], 10, w=110)
+    W(s, u"Chain12", ch, 1)
+    ch = call(s, u"FB_CPU_Store", u"S6", [(u"Enable", R(s, u"Enable"))], 10, w=140)
     W(s, u"Chain7", ch, 1)
     # Фактическая запись в память -- отдельной ступенью: слой Store только
     # вычисляет порты, а чтение этих же ячеек внутри него дало бы старое
@@ -368,9 +360,9 @@ def fb_core():
     ch = call(s, u"SL_STWRITE", u"Sw", [], 10, w=110)
     W(s, u"Chain10", ch, 1)
     # Регистр P собирается ПОСЛЕ FB_WriteBack (нужен REG_WR) и ДО FB_RegFile.
-    ch = call(s, u"FB_CPU_Flags", u"S9", [(u"Enable", s.const(u"TRUE", 0))], 11, w=140)
+    ch = call(s, u"FB_CPU_Flags", u"S9", [(u"Enable", R(s, u"Enable"))], 11, w=140)
     W(s, u"Chain9", ch, 1)
-    ch = call(s, u"FB_RegFile", u"S7", [(u"Enable", s.const(u"TRUE", 0))], 11, w=140)
+    ch = call(s, u"FB_RegFile", u"S7", [(u"Enable", R(s, u"Enable"))], 11, w=140)
     W(s, u"Chain8", ch, 1)
     W(s, u"Done", R(s, u"Enable"), 11)
     return s
@@ -440,7 +432,7 @@ def main():
                                  u"Dec", u"FB_Decoder6502",
                                  u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
                                  u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
-                                 u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"Sw", u"SL_STWRITE", u"S7", u"FB_RegFile")
+                                 u"Prep", u"SL_PREP", u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"Sd", u"SL_STDATA", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"Sw", u"SL_STWRITE", u"S7", u"FB_RegFile")
                   + [(u"STaken", u"BOOL")]),
         [fb_core()], u"такт"))
 
