@@ -235,12 +235,11 @@ def fb_store():
                                  (u"IN0", R(s, u"STK_D0")),
                                  (u"IN1", R(s, u"P_NEW"))], 7), 8)
     W(s, u"WR_EN0", en0, 6)
-    s.assign(u"GVL_MEM.Mem[GVL_CPU.WR0]",
-             s.blk(u"SEL", [(u"G", R(s, u"WR_EN0")),
-                            (u"IN0", s.ref(u"GVL_MEM.Mem[GVL_CPU.WR0]", 7)),
-                            (u"IN1", R(s, u"WRD0"))], 7), 8)
+    # Сама запись в память вынесена в ступень SL_STWRITE: здесь WR_EN0/WRD0
+    # только ВЫЧИСЛЯЮТСЯ, а чтение их в этом же ПОУ дало бы старое значение
+    # (правило 2.5) -- из-за этого в стек ничего не попадало.
 
-    # --- port 1 (JSR: PCH, BRK: PCH)
+    # --- port 1 (JSR: PCL, BRK: PCH)
     en1 = s.blk(u"AND", [(u"IN1", R(s, u"Enable")),
                          (u"IN2", s.blk(u"OR", [(u"IN1", R(s, u"IS_JSR")),
                                                 (u"IN2", push3)], 3))], 4)
@@ -248,19 +247,11 @@ def fb_store():
     W(s, u"WRD1", s.blk(u"SEL", [(u"G", push3), (u"IN0", R(s, u"PCL")),
                                             (u"IN1", R(s, u"PCH"))], 6), 7)
     W(s, u"WR_EN1", en1, 6)
-    s.assign(u"GVL_MEM.Mem[GVL_CPU.WR1]",
-             s.blk(u"SEL", [(u"G", R(s, u"WR_EN1")),
-                            (u"IN0", s.ref(u"GVL_MEM.Mem[GVL_CPU.WR1]", 7)),
-                            (u"IN1", R(s, u"WRD1"))], 7), 8)
 
-    # --- port 2 (JSR: PCL, BRK: PCL)
+    # --- port 2 (BRK: PCL)
     W(s, u"WR2", R(s, u"STK_A2"), 5)
     W(s, u"WRD2", R(s, u"PCL"), 6)
     W(s, u"WR_EN2", s.blk(u"AND", [(u"IN1", R(s, u"Enable")), (u"IN2", push3)], 6), 6)
-    s.assign(u"GVL_MEM.Mem[GVL_CPU.WR2]",
-             s.blk(u"SEL", [(u"G", R(s, u"WR_EN2")),
-                            (u"IN0", s.ref(u"GVL_MEM.Mem[GVL_CPU.WR2]", 7)),
-                            (u"IN1", R(s, u"WRD2"))], 7), 8)
     # Технический выход: гарантирует, что CODESYS сгенерирует и
     # исполнит тело слоя (правило 3 конспекта).
     s.assign(u"OUT", R(s, u"Enable"), 22)
@@ -371,6 +362,11 @@ def fb_core():
     W(s, u"Chain6", ch, 1)
     ch = call(s, u"FB_CPU_Store", u"S6", [(u"Enable", s.const(u"TRUE", 0))], 10, w=140)
     W(s, u"Chain7", ch, 1)
+    # Фактическая запись в память -- отдельной ступенью: слой Store только
+    # вычисляет порты, а чтение этих же ячеек внутри него дало бы старое
+    # значение (правило 2.5), из-за чего в стек ничего не попадало.
+    ch = call(s, u"SL_STWRITE", u"Sw", [], 10, w=110)
+    W(s, u"Chain10", ch, 1)
     # Регистр P собирается ПОСЛЕ FB_WriteBack (нужен REG_WR) и ДО FB_RegFile.
     ch = call(s, u"FB_CPU_Flags", u"S9", [(u"Enable", s.const(u"TRUE", 0))], 11, w=140)
     W(s, u"Chain9", ch, 1)
@@ -444,7 +440,7 @@ def main():
                                  u"Dec", u"FB_Decoder6502",
                                  u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
                                  u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
-                                 u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"S7", u"FB_RegFile")
+                                 u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"Sw", u"SL_STWRITE", u"S7", u"FB_RegFile")
                   + [(u"STaken", u"BOOL")]),
         [fb_core()], u"такт"))
 

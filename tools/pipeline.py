@@ -22,6 +22,7 @@ STEPS = [
     u"gen_fetch.py",
     u"gen_wdata.py",
     u"gen_carry.py",
+    u"gen_stwrite.py",
     u"gen_step2.py",
     u"gen_step3.py",
     u"gen_step4.py",
