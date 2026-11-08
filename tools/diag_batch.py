@@ -22,20 +22,21 @@ PROJ = os.path.join(ROOT, "build", u"CPM6502_CPU.project")
 
 SIG = [u"PC", u"OPs", u"OP1", u"OP2", u"LEN", u"ADDR_MODE", u"SRC",
        u"EFF", u"WDATA", u"ALU_A", u"ALU_B", u"ALU_R", u"CARRY",
-       u"N_F", u"Z_F", u"V_ADD", u"V_SUB", u"REG_WR", u"P_NEW", u"P_WORK",
+       u"N_F2", u"Z_F2", u"V_SUB", u"REG_WR", u"P_NEW", u"P_WORK",
        u"A", u"X", u"Y", u"P", u"SP", u"LD_A", u"LD_X", u"LD_Y",
-       u"LD_A_E", u"LD_X_E", u"LD_Y_E", u"SET_NZ", u"SET_C"]
+       u"LD_A_E", u"LD_X_E", u"LD_Y_E", u"SET_NZ", u"SET_C",
+       u"C_IMM", u"C_ZP", u"C_ZPX", u"C_ABS", u"C_ABX", u"C_ABY",
+       u"C_IZX", u"C_IZY", u"P_EFF", u"ADV", u"WR_MEM_E"]
 
 # (imya, bayty, A, X, Y, P, pre[(adres,znachenie)])
 CASES = [
-    (u"LDA #$42",   [0xA9, 0x42], 0x11, 0x22, 0x33, 0x24, []),
-    (u"LDA zp",     [0xA5, 0x10], 0x11, 0x22, 0x33, 0x24, [(0x10, 0x42)]),
-    (u"LDA abs",    [0xAD, 0x00, 0x03], 0x11, 0x22, 0x33, 0x24, [(0x0300, 0x42)]),
-    (u"LDY zp",     [0xA4, 0x10], 0x11, 0x22, 0x33, 0x24, [(0x10, 0x42)]),
-    (u"TAX",        [0xAA], 0x11, 0x22, 0x33, 0x24, []),
+    (u"LDY #$42",   [0xA0, 0x42], 0x11, 0x22, 0x33, 0x24, []),
+    (u"LDY abs",    [0xAC, 0x00, 0x03], 0x11, 0x22, 0x33, 0x24, [(0x0300, 0x42)]),
+    (u"LDA abs,X",  [0xBD, 0x00, 0x03], 0x11, 0x02, 0x33, 0x24, [(0x0302, 0x42)]),
+    (u"LDA (zp),Y", [0xB1, 0x20], 0x11, 0x22, 0x02, 0x24,
+     [(0x20, 0x00), (0x21, 0x03), (0x0302, 0x42)]),
     (u"ADC #$01",   [0x69, 0x01], 0x00, 0x22, 0x33, 0x24, []),
-    (u"INX",        [0xE8], 0x11, 0x05, 0x33, 0x24, []),
-    (u"STA zp",     [0x85, 0x10], 0xA5, 0x22, 0x33, 0x24, []),
+    (u"ADC zpx",    [0x75, 0x10], 0x10, 0x02, 0x33, 0x24, [(0x12, 0x05)]),
 ]
 
 
@@ -89,7 +90,10 @@ def wr(expr, val):
 
 
 def rd(expr):
-    v = u"%s" % oa.read_value(expr)
+    try:
+        v = u"%s" % oa.read_value(expr)
+    except Exception:
+        return -1
     try:
         if u"16#" in v:
             return int(v.split(u"16#")[-1], 16)

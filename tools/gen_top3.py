@@ -267,7 +267,14 @@ def fb_regfile():
     W(s, u"A", s.blk(u"SEL", [(u"G", R(s, u"LD_A_E")), (u"IN0", R(s, u"A")), (u"IN1", R(s, u"REG_WR"))], 1), 2)
     W(s, u"X", s.blk(u"SEL", [(u"G", R(s, u"LD_X_E")), (u"IN0", R(s, u"X")), (u"IN1", R(s, u"REG_WR"))], 3), 4)
     W(s, u"Y", s.blk(u"SEL", [(u"G", R(s, u"LD_Y_E")), (u"IN0", R(s, u"Y")), (u"IN1", R(s, u"REG_WR"))], 5), 6)
-    W(s, u"P", s.blk(u"SEL", [(u"G", R(s, u"LD_P_E")), (u"IN0", R(s, u"P_NEW")), (u"IN1", R(s, u"REG_WR"))], 7), 8)
+    # P пишется только при разрешённом такте, как и PC: иначе ядро каждый скан
+    # перезаписывало бы P вычисленным P_NEW и затирало значение, заданное
+    # извне (тестом или оператором), -- из-за этого не работал входной перенос
+    # (ADC/SBC с C=1 в начальном P).
+    psel = s.blk(u"SEL", [(u"G", R(s, u"LD_P_E")), (u"IN0", R(s, u"P_NEW")),
+                          (u"IN1", R(s, u"REG_WR"))], 7)
+    W(s, u"P", s.blk(u"SEL", [(u"G", R(s, u"Enable")), (u"IN0", R(s, u"P")),
+                              (u"IN1", psel)], 8), 9)
     W(s, u"SP", s.blk(u"SEL", [(u"G", R(s, u"LD_SP_E")), (u"IN0", R(s, u"SP")), (u"IN1", R(s, u"SP_NEW"))], 9), 10)
     # PC пишется только при разрешённом такте: иначе Run=FALSE не заморозит ядро.
     W(s, u"PC", s.blk(u"SEL", [(u"G", R(s, u"Enable")), (u"IN0", R(s, u"PC")), (u"IN1", R(s, u"PC_NEW"))], 11), 12)

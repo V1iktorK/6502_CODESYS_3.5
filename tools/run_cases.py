@@ -158,6 +158,7 @@ def main():
             want = [(u"GVL_CPU.A", u"16#%02X", case["init"]["a"]),
                     (u"GVL_CPU.X", u"16#%02X", case["init"]["x"]),
                     (u"GVL_CPU.Y", u"16#%02X", case["init"]["y"]),
+                    (u"GVL_CPU.P", u"16#%02X", case["init"]["p"]),
                     (u"GVL_CPU.SP", u"16#%02X", case["init"]["sp"]),
                     (u"GVL_CPU.PC", u"16#%04X", pc0)]
             for _ in range(30):
@@ -169,6 +170,9 @@ def main():
                         wr(k, fmt % v)
                 time.sleep(0.02)
             wr(u"GVL_CPU.Run", u"TRUE")
+            # Даём ядру гарантированно отработать: программа короткая, после неё
+            # стоит JMP на себя, поэтому лишнее время ничего не портит.
+            time.sleep(0.25)
             # ждём останова: PC перестал меняться и равен одной из точек останова
             stops = set([end])
             if exp[u"pc"] != end:
@@ -183,6 +187,7 @@ def main():
                     break
                 prev = pc
             wr(u"GVL_CPU.Run", u"FALSE")
+            time.sleep(0.1)
             got = {
                 u"a": rd(u"GVL_CPU.A"), u"x": rd(u"GVL_CPU.X"),
                 u"y": rd(u"GVL_CPU.Y"), u"p": rd(u"GVL_CPU.P"),

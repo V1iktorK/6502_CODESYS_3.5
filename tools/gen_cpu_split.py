@@ -251,11 +251,13 @@ def build_alu():
     binv = s.blk(u"XOR", [(u"IN1", alu_b), (u"IN2", s.const(BFF, 3))], 4)
     bx = SELb(s, isub, alu_b, binv, 5)
 
-    # ---- перенос на входе: бит 0 регистра P, разрешённый сигналом USE_CARRY
+    # ---- перенос на входе: бит 0 регистра P, разрешённый сигналом USE_CARRY,
+    # либо принудительная единица (CIN_FORCE) для DEX/DEY: вычитание на 6502
+    # идёт через дополнение, поэтому без C=1 получается X-2, а не X-1.
     pbit0 = s.blk(u"AND", [(u"IN1", pv), (u"IN2", s.const(B1, 2))], 2)
-    cbit = EQv(s, pbit0, B1, 3) if False else s.blk(
-        u"EQ", [(u"IN1", pbit0), (u"IN2", s.const(B1, 3))], 3)
-    cin = SELb(s, ucy, s.const(F, 3), cbit, 4)
+    cbit = s.blk(u"EQ", [(u"IN1", pbit0), (u"IN2", s.const(B1, 3))], 3)
+    forced = SELb(s, s.ref(u"CIN_FORCE", 0), s.const(F, 3), s.const(T, 3), 3)
+    cin = SELb(s, ucy, forced, cbit, 4)
     s.assign(u"ALU_CIN", cin, 5)
 
     # ---- S1 = AX + BX; перенос C1 = S1 < AX
