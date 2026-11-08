@@ -45,7 +45,14 @@ def W(s, name, src, col):
 
 
 def call(s, typ, inst, pins, col, w=140):
-    return s.blk(typ, pins, col, width=w, inst=inst)
+    """Вызов ступени/слоя. Выход OUT сразу читается в GVL_CPU.Chain1.
+
+    Чтение обязательно: CODESYS исполняет тело вызываемого ПОУ только тогда,
+    когда вызов что-то отдаёт (правило 3 конспекта). Без него ALU_R = 0.
+    """
+    bid = s.blk(typ, pins, col, width=w, inst=inst)
+    s.assign(u"GVL_CPU.Chain1", bid, col + 1)
+    return bid
 
 
 def pouloc(*args):

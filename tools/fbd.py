@@ -218,10 +218,9 @@ class Sheet(object):
         # называется OUT, а у наших функций -- иначе.
         if out_pin == u"OUT" and type_name in OUT_PIN:
             out_pin = OUT_PIN[type_name]
-        # У экземпляров ПОУ выходных связей нет (результаты пишутся в GVL),
-        # поэтому секцию выходов не объявляем вовсе.
-        if inst and type_name not in OUT_PIN:
-            out_pin = None
+        # У экземпляров ПОУ (ступени и слои) выход OUT есть, и его надо читать:
+        # CODESYS исполняет тело ПОУ только тогда, когда вызов что-то отдаёт
+        # (правило 3 конспекта). Поэтому клапан, отнимавший выход, снят.
         if anchor is not None and anchor in self._ypos:
             y = self._ypos[anchor]
             self._cursor[col] = max(self._cursor.get(col, TOPY), y + h + ROWGAP)
@@ -427,10 +426,25 @@ def pou_xml(name, pou_type, iface, sheets, comment=None):
             iface = iface.replace(u"<localVars>", u"<localVars>" + decl, 1)
         else:
             iface = iface.replace(u"</interface>", u"<localVars>" + decl + u"</localVars></interface>", 1)
+    # Ступени и слои (FB_*, SL_*) обязаны иметь контактный выход OUT: CODESYS
+    # исполняет тело ПОУ только тогда, когда его вызов что-то читает
+    # (правило 3 конспекта). Без этого ALU_R оставался 0 при верных входах.
+    needs_out = (pou_type != u"program"
+                 and (name.startswith(u"FB_") or name.startswith(u"SL_")))
+    if needs_out and u'name="OUT"' not in iface:
+        sheets[0].assign(u"OUT", sheets[0].const(u"TRUE", 0), 0)
+        out_var = u'<variable name="OUT"><type><BOOL /></type></variable>'
+        if u"<outputVars>" in iface:
+            iface = iface.replace(u"</outputVars>", out_var + u"</outputVars>", 1)
+        else:
+            iface = iface.replace(u"</interface>",
+                                  u"<outputVars>" + out_var + u"</outputVars></interface>", 1)
     all_els = []
     for s in sheets:
         all_els.extend(s.els)
-    body = u"<FBD>" + u"".join(all_els) + u"</FBD>"
+    merged = Sheet(u"")
+    merged.els = all_els
+    body = merged.xml()
     doc = u'<?xml version="1.0" encoding="utf-8"?>\n'
     doc += u'<project xmlns="http://www.plcopen.org/xml/tc6_0200">\n'
     doc += (u'<fileHeader companyName="" productName="CODESYS" '

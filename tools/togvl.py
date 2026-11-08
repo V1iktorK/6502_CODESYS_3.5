@@ -40,21 +40,32 @@ def convert(name):
     m = re.search(u'<outputVars>(.*?)</outputVars>', text, re.S)
     if not m:
         return None
-    outs = re.findall(u'<variable name="([^"]+)">', m.group(1))
-    if not outs:
+    all_outs = re.findall(u'<variable name="([^"]+)">', m.group(1))
+    # OUT -- служебный контактный выход: он ОСТАЁТСЯ в объявлении и НЕ
+    # переводится в GVL_CPU. Именно его читает композиция, и только благодаря
+    # этому чтению CODESYS исполняет тело ступени (правило 3 конспекта).
+    outs = [o for o in all_outs if o != u"OUT"]
+    kept = [o for o in all_outs if o == u"OUT"]
+    if not all_outs:
         return None
 
     new = text
     for o in outs:
         new = new.replace(u'<expression>%s</expression>' % o,
                           u'<expression>GVL_CPU.%s</expression>' % o)
-    # удаляем секцию выходных переменных
-    new = new[:m.start()] + new[m.end():]
+    # удаляем секцию выходных переменных, но сохраняем служебный OUT
+    if kept:
+        section = u'<outputVars>' + u''.join(
+            u'<variable name="OUT"><type><BOOL /></type></variable>' for _ in kept
+        ) + u'</outputVars>'
+    else:
+        section = u''
+    new = new[:m.start()] + section + new[m.end():]
 
     o = io.open(path, "wb")
     o.write(new.encode("utf-8"))
     o.close()
-    return outs
+    return outs if not kept else (outs + [u"OUT"])
 
 
 def main():

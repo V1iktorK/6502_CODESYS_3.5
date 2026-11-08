@@ -52,7 +52,9 @@ pins = [(u"A", s.const(u"BYTE#0", 0)),
         (u"F_SUB", s.const(u"FALSE", 0)),
         (u"F_CMP", s.const(u"FALSE", 0)),
         (u"USE_CARRY", s.const(u"FALSE", 0))]
-s.blk(u"FB_ALU6502", pins, 2, width=150, inst=u"Alu")
+bid = s.blk(u"FB_ALU6502", pins, 2, width=150, inst=u"Alu")
+# Читаем контактный выход: без этого CODESYS не исполняет тело ПОУ.
+s.assign(u"GVL_CPU.Chain1", bid, 4)
 prg = pou_xml(u"PLC_PRG", u"program",
               interface(locals_=[(u"Alu", u"FB_ALU6502")]), [s], u"проверка АЛУ")
 p = wr(u"PRG_ALU", prg)
@@ -83,7 +85,7 @@ gvl = (u"VAR_GLOBAL\n"
        u"\tWDATA : BYTE;\n\tALU_A : BYTE;\n\tALU_B : BYTE;\n"
        u"\tF_SUB : BOOL;\n\tF_CMP : BOOL;\n\tUSE_CARRY : BOOL;\n\tF_ADD : BOOL;\n"
        u"\tALU_R : BYTE;\n\tCARRY : BOOL;\n\tV_ADD : BOOL;\n\tV_SUB : BOOL;\n"
-       u"\tN_F : BOOL;\n\tZ_F : BOOL;\n\tISUB : BOOL;\n"
+       u"\tN_F : BOOL;\n\tZ_F : BOOL;\n\tISUB : BOOL;\n\tChain1 : BOOL;\n"
        u"END_VAR\n")
 try:
     g = app.create_gvl(u"GVL_CPU")

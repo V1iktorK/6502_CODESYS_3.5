@@ -76,13 +76,13 @@ if oa is not None:
     try:
         # ВАЖНО (конспект 5.5): write_prepared_values() применяет ТОЛЬКО последнее
         # значение, поэтому пишем и подтверждаем ПО ОДНОМУ.
+        # Регистры A/X/Y/P НЕ пишем: процессор уже работает, и такая запись
+        # затирает результат LDA ($42 -> 0). Достаточно памяти и PC.
         writes = [(u"GVL_MEM.Mem[512]", u"16#A9"), (u"GVL_MEM.Mem[513]", u"16#42"),
-                  (u"GVL_MEM.Mem[514]", u"16#4C"), (u"GVL_MEM.Mem[515]", u"16#00"),
+                  (u"GVL_MEM.Mem[514]", u"16#4C"), (u"GVL_MEM.Mem[515]", u"16#02"),
                   (u"GVL_MEM.Mem[516]", u"16#02"),
                   (u"GVL_MEM.Mem[65534]", u"16#00"), (u"GVL_MEM.Mem[65535]", u"16#02"),
-                  (u"GVL_CPU.PC", u"16#0200"), (u"GVL_CPU.SP", u"16#FF"),
-                  (u"GVL_CPU.A", u"16#00"), (u"GVL_CPU.X", u"16#00"),
-                  (u"GVL_CPU.Y", u"16#00"), (u"GVL_CPU.P", u"16#30")]
+                  (u"GVL_CPU.PC", u"16#0200"), (u"GVL_CPU.SP", u"16#FF")]
         for nm, val in writes:
             try:
                 oa.set_prepared_value(nm, val)
@@ -120,7 +120,10 @@ if oa is not None:
                  u"GVL_CPU.WR0", u"GVL_CPU.WR1", u"GVL_CPU.WR_EN0", u"GVL_CPU.WRD0",
                  u"GVL_CPU.SPM1", u"GVL_CPU.SPP1", u"GVL_CPU.SP_NEW",
                  u"GVL_MEM.Mem[65534]", u"GVL_MEM.Mem[65535]", u"GVL_CPU.Enable",
-                 u"GVL_CPU.A"):
+                 u"GVL_CPU.A", u"GVL_CPU.Ops", u"GVL_CPU.SRC", u"GVL_CPU.LEN",
+                 u"GVL_CPU.ADDR_MODE", u"GVL_CPU.LD_A", u"GVL_CPU.LD_A_E",
+                 u"GVL_CPU.REG_WR", u"GVL_CPU.ALU_R", u"GVL_CPU.ADV",
+                 u"GVL_CPU.P_EFF", u"GVL_CPU.P_KEEP"):
         try:
             v = oa.read_value(expr)
             res[expr] = v
@@ -130,9 +133,17 @@ if oa is not None:
 
     # ---- проверка
     def num(expr):
+        # CODESYS печатает BYTE/WORD в десятичном виде ("BYTE#66"); шестнадцатеричное
+        # значение приходит только с префиксом "16#". Раньше здесь всё считалось
+        # hex-ом, из-за чего $42 превращался в 102 и тест ложно падал.
         v = res.get(expr)
+        s = str(v)
         try:
-            return int(str(v).split(u"#")[-1], 16) if u"#" in str(v) else int(v)
+            if u"16#" in s:
+                return int(s.split(u"16#")[-1], 16)
+            if u"#" in s:
+                return int(s.split(u"#")[-1])
+            return int(s)
         except Exception:
             return None
 

@@ -54,9 +54,10 @@ def ANDb(s, a, b, col):
 
 
 def SELb(s, g, a, b, col):
-    # Соглашение CODESYS: при G=TRUE выбирается IN1. Наш смысл: "при g -- a",
-    # поэтому a ставим в IN1, а b -- в IN0.
-    return s.blk(u"SEL", [(u"G", g), (u"IN0", b), (u"IN1", a)], col)
+    # Соглашение CODESYS (проверено в рантайме): при G=TRUE выбирается IN1,
+    # при G=FALSE -- IN0. Здесь a -- значение при g=FALSE, b -- при g=TRUE,
+    # то есть "g ? b : a" -- так и написаны все места вызова.
+    return s.blk(u"SEL", [(u"G", g), (u"IN0", a), (u"IN1", b)], col)
 
 
 def ORB(s, ids, col):
@@ -232,14 +233,14 @@ def build_alu():
     # ---- выбор операндов
     # ALU_A: 0 = A, 1 = X, 2 = Y
     au = s.ref(u"ALU_A", 0)
-    ax_or_y = SELb(s, EQv(s, au, u"BYTE#2", 1), yv, a, 2)
+    ax_or_y = SELb(s, EQv(s, au, u"BYTE#2", 1), a, yv, 2)
     alu_a = SELb(s, byt(s, au, 1), ax_or_y, xv, 2)
     # ALU_B: 0 = операнд (MDR/WDATA), 1 = единица
     alu_b = SELb(s, byt(s, s.ref(u"ALU_B", 0), 1), wd, s.const(B1, 2), 2)
     # Команды загрузки не задают F_ADD/F_SUB/F_CMP: тогда АЛУ пропускает операнд,
     # то есть первый слагаемое обнуляется и ALU_R = WDATA.
     op_any = ORB(s, [s.ref(u"F_ADD", 0), s.ref(u"F_SUB", 0), s.ref(u"F_CMP", 0)], 2)
-    alu_a = SELb(s, op_any, alu_a, s.const(B0, 2), 3)
+    alu_a = SELb(s, op_any, s.const(B0, 2), alu_a, 3)
     s.assign(u"ALU_AX", alu_a, 3)
     s.assign(u"ALU_BX", alu_b, 3)
 
