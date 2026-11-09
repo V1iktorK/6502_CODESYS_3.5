@@ -235,6 +235,7 @@ def main():
                     for n in (u"OPs", u"SP_MODE", u"IS_JSR", u"SRC", u"REG_WR",
                               u"WRD0", u"WR0", u"WR_EN0", u"EFF", u"P_NEW"))
                 bad.append(u"такт: " + snap)
+                bad.append(u"DBG Mem[0400]=%s" % rd(u"GVL_MEM.Mem[1024]"))
             ok = not bad
             results.append((name, ok, bad))
             log(u"  %-30s %s%s" % (name, u"PASS" if ok else u"FAIL",

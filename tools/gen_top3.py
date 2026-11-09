@@ -363,7 +363,11 @@ def fb_core():
     # Фактическая запись в память -- отдельной ступенью: слой Store только
     # вычисляет порты, а чтение этих же ячеек внутри него дало бы старое
     # значение (правило 2.5), из-за чего в стек ничего не попадало.
-    ch = call(s, u"SL_STWRITE", u"Sw", [], 10, w=110)
+    ch = call(s, u"SL_STWRITE", u"Sw",
+         [(u"ADR0", R(s, u"WR0")), (u"DAT0", R(s, u"WRD0")), (u"EN0", R(s, u"WR_EN0")),
+          (u"ADR1", R(s, u"WR1")), (u"DAT1", R(s, u"WRD1")), (u"EN1", R(s, u"WR_EN1")),
+          (u"ADR2", R(s, u"WR2")), (u"DAT2", R(s, u"WRD2")), (u"EN2", R(s, u"WR_EN2"))],
+         10, w=140)
     W(s, u"Chain10", ch, 1)
     # Регистр P собирается ПОСЛЕ FB_WriteBack (нужен REG_WR) и ДО FB_RegFile.
     ch = call(s, u"FB_CPU_Flags", u"S9", [(u"Enable", R(s, u"Enable"))], 11, w=140)
