@@ -73,7 +73,8 @@ def rd(e):
 
 
 try:
-    wr(u"GVL_CPU.Run", u"TRUE")
+    # Snachala STOP: inache yadro ispolnyaet musor vo vremya zagruzki obraza
+    wr(u"GVL_CPU.Run", u"FALSE")
     # Svobodnyy progon (bez poshagovyh impulsov): odna komanda za skan,
     # ostanavlivaet programma komandoy HLT.
     wr(u"GVL_CPU.Step_On", u"FALSE")
@@ -89,6 +90,7 @@ try:
     wr(u"GVL_CPU.SP", u"16#FF")
     wr(u"GVL_IO.ConPtr", u"16#00")
     time.sleep(0.2)
+    wr(u"GVL_CPU.Run", u"TRUE")
     log(u"перед прогоном: PC=%s Ops=%s Run=%s" % (rd(u"GVL_CPU.PC"), rd(u"GVL_CPU.Ops"), rd(u"GVL_CPU.Run")))
     time.sleep(1.5)
     log(u"после прогона: PC=%s Ops=%s Enable=%s" % (rd(u"GVL_CPU.PC"), rd(u"GVL_CPU.Ops"), rd(u"GVL_CPU.Enable")))

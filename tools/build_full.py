@@ -11,6 +11,7 @@ Otlичия ot build_top:
 """
 import io
 import os
+import re
 import sys
 import traceback
 
@@ -27,7 +28,7 @@ from opcodes import BOOL_SIGNALS, BYTE_SIGNALS, build_effects
 ORDER = [
     u"F_UnpackByte", u"F_PackByte", u"F_Join16", u"F_Split16", u"F_Add16",
     u"FB_Fetch", u"FB_FetchOp", u"FB_Decoder6502", u"FB_ALU6502",
-    u"SL_VSEL", u"SL_NZF", u"SL_CARRY", u"SL_INDW", u"SL_PREP", u"SL_STDATA", u"SL_REGSEL", u"SL_SNAPSHOT", u"SL_FLG_N", u"SL_FLG_Z", u"SL_FLG_C", u"SL_FLG_V", u"SL_FLG_I",
+    u"SL_VSEL", u"SL_NZF", u"SL_CARRY", u"SL_INDW", u"SL_STEP", u"SL_PREP", u"SL_STDATA", u"SL_REGSEL", u"SL_SNAPSHOT", u"SL_FLG_N", u"SL_FLG_Z", u"SL_FLG_C", u"SL_FLG_V", u"SL_FLG_I",
     u"SL_FLG_B", u"SL_FLG5", u"FB_WriteBack",
     u"SL_C1A", u"SL_C1B", u"SL_YW", u"SL_IND2", u"SL_INDP", u"SL_RELA",
     u"SL_RELC", u"SL_BRK", u"SL_SELECT12", u"SL_WDATA2",
@@ -94,7 +95,9 @@ GATEV = [(u"LD_A_E", u"BOOL"), (u"LD_X_E", u"BOOL"), (u"LD_Y_E", u"BOOL"),
          (u"WRD0", u"BYTE"), (u"WRD1", u"BYTE"), (u"STK_D0", u"BYTE"), (u"WRD2", u"BYTE"),
          (u"WR_EN0", u"BOOL"), (u"WR_EN1", u"BOOL"), (u"WR_EN2", u"BOOL"),
          (u"Chain1", u"BOOL"), (u"Chain2", u"BOOL"), (u"Chain3", u"BOOL"), (u"Chain4", u"BOOL"),
-         (u"Chain5", u"BOOL"), (u"Chain6", u"BOOL"), (u"Chain7", u"BOOL"), (u"Chain8", u"BOOL"), (u"Chain9", u"BOOL"), (u"Chain10", u"BOOL"), (u"Chain11", u"BOOL"), (u"Chain12", u"BOOL"), (u"Chain13", u"BOOL"), (u"Chain14", u"BOOL")]
+         (u"Chain5", u"BOOL"), (u"Chain6", u"BOOL"), (u"Chain7", u"BOOL"), (u"Chain8", u"BOOL"),
+        (u"Chain9", u"BOOL"), (u"Chain10", u"BOOL"), (u"Chain11", u"BOOL"), (u"Chain12", u"BOOL"),
+        (u"Chain13", u"BOOL"), (u"Chain14", u"BOOL"), (u"Chain15", u"BOOL"), (u"Chain16", u"BOOL"),]
 
 
 def table_text():
@@ -389,6 +392,19 @@ def main():
     for t in warns:
         log(u"     %s" % t)
 
+    # Итоговая строка компилятора: "Компиляция завершена -- N ошибок".
+    # РАНЬШЕ она не учитывалась: проект сохранялся с ошибками, и стенд потом
+    # не мог войти в симуляцию ("При компиляции возникли ошибки").
+    nsum = 0
+    for x in list(errs) + list(info):
+        msum = re.search(r"завершена\s*--\s*(\d+)\s*ошиб", u"%s" % x)
+        if msum:
+            nsum = int(msum.group(1))
+    if nsum:
+        log(u"КОМПИЛЯТОР СООБЩИЛ %d ОШИБОК -- все сообщения:" % nsum)
+        for x in list(errs) + list(info):
+            log(u"   %s" % x)
+        errs = list(errs) + [u"итог компилятора: %d ошибок" % nsum]
     ok = (not bad) and (not errs)
     log(u"")
     log(u"ИТОГ: POU %d/%d, ошибок %d -> %s" %

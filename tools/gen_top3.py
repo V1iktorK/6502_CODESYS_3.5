@@ -325,26 +325,7 @@ def fb_latch():
 
 def fb_core():
     s = Sheet(u"FB_CPU_Core: один такт MOS 6502")
-    # ---- пульт: Run / пошаговый режим
-    # В пошаговом режиме такт разрешён только по импульсу Step_Pulse и только
-    # один раз: защёлка STaken (локальная переменная ПОУ) помнит, что шаг уже
-    # сделан, и снимается вместе с импульсом. Это нужно и тестам (точная
-    # постановка состояния без гонки), и операторской панели HMI.
-    run = s.ref(u"Enable", 0)
-    st_on = R(s, u"Step_On")
-    pulse = R(s, u"Step_Pulse")
-    stak = s.ref(u"STaken", 0)
-    permit = s.blk(u"AND", [(u"IN1", pulse),
-                            (u"IN2", s.blk(u"NOT", [(u"IN", stak)], 1))], 2)
-    en = s.blk(u"AND", [(u"IN1", run),
-                        (u"IN2", s.blk(u"OR", [(u"IN1", s.blk(u"NOT", [(u"IN", st_on)], 1)),
-                                               (u"IN2", permit)], 2))], 3)
-    W(s, u"Enable", en, 4)
-    s.assign(u"STaken", s.blk(u"AND", [(u"IN1", s.blk(u"OR", [(u"IN1", stak),
-                                                              (u"IN2", s.blk(u"AND", [(u"IN1", st_on),
-                                                                                      (u"IN2", permit)], 3))], 3)),
-                              (u"IN2", pulse)], 4), 5)
-    W(s, u"Step_Taken", s.ref(u"STaken", 6), 6)
+    # ---- пульт вынесен в отдельную ступень SL_STEP (см. gen_step.py)
     call(s, u"FB_Fetch", u"Fch", [(u"PCs", R(s, u"PC"))], 2, w=110)
     call(s, u"FB_FetchOp", u"Fop",
          [(u"PC1", R(s, u"PC1")), (u"PC2", R(s, u"PC2"))], 2, w=120)
@@ -406,7 +387,9 @@ def prg():
     """
     s = Sheet(u"PLC_PRG: один такт процессора за скан задачи")
     s.add_comment(u"Каждый скан задачи выполняется ровно одна команда MOS 6502")
-    call(s, u"FB_CPU_Core", u"Core", [(u"Enable", R(s, u"Run"))], 2, w=140)
+    call(s, u"SL_STEP", u"Step", [], 1, w=110)
+    W(s, u"Chain16", R(s, u"Enable"), 1)
+    call(s, u"FB_CPU_Core", u"Core", [(u"Enable", R(s, u"Enable"))], 2, w=140)
     for k, col in ((0, 5), (1, 7), (2, 9)):
         ch = call(s, u"FB_MemStore", u"Ms%d" % k,
                   [(u"Addr", R(s, u"WR%d" % k)), (u"Data", R(s, u"WRD%d" % k)),
@@ -502,7 +485,7 @@ def main():
 
     write(u"PRG_PLC", pou_xml(
         u"PLC_PRG", u"program",
-        interface(locals_=[(u"Core", u"FB_CPU_Core"), (u"Ms0", u"FB_MemStore"), (u"Ms1", u"FB_MemStore"), (u"Ms2", u"FB_MemStore")]),
+        interface(locals_=[(u"Step", u"SL_STEP"), (u"Core", u"FB_CPU_Core"), (u"Ms0", u"FB_MemStore"), (u"Ms1", u"FB_MemStore"), (u"Ms2", u"FB_MemStore")]),
         [prg()], u"точка входа задачи"))
     print(u"готово")
 
