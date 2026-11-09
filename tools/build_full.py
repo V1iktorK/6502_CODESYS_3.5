@@ -197,12 +197,14 @@ def main():
     # эмулируемую RAM. Вынужденное отступление, см. docs/09_БЛОКЕР_ЗАПИСЬ_В_ПАМЯТЬ.md
     try:
         mp = app.create_pou(u"FB_MemStore", PouType.FunctionBlock)
-        mp.textual_declaration.replace(
-            u"FUNCTION_BLOCK FB_MemStore\nVAR_INPUT\n\tAdr : WORD;\n\tDat : BYTE;\n\tEn : BOOL;\nEND_VAR\n"
+        mp0 = mp; mp.textual_declaration.replace(
+            u"FUNCTION_BLOCK FB_MemStore\nVAR_INPUT\n\tAddr : WORD;\n\tData : BYTE;\n\tEn : BOOL;\nEND_VAR\n"
             u"VAR_OUTPUT\n\tOUT : BOOL;\nEND_VAR")
         mp.textual_implementation.replace(
-            u"IF En THEN\n\tGVL_MEM.Mem[Adr] := Dat;\nEND_IF\nOUT := TRUE;")
+            u"IF En THEN\n\tGVL_MEM.Mem[Addr] := Data;\nEND_IF\nOUT := TRUE;")
         log(u"FB_MemStore создана (ST, один оператор записи в RAM)")
+        log(u"  декларация: [%s]" % u" | ".join(mp.textual_declaration.text.splitlines()))
+        log(u"  реализация: [%s]" % u" | ".join(mp.textual_implementation.text.splitlines()))
     except Exception:
         log(u"FB_MemStore: %s" % traceback.format_exc().strip().splitlines()[-1])
 

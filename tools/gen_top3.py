@@ -385,21 +385,20 @@ def fb_core():
 def prg():
     """PLC_PRG -- верхний уровень: такт ядра И запись в память.
 
-    ВАЖНО: запись в GVL_MEM.Mem по вычисляемому индексу в этой среде
-    теряется (docs/09_БЛОКЕР_ЗАПИСЬ_В_ПАМЯТЬ.md). Здесь запись сделана
-    через локальные переменные программы -- это самый близкий к рабочему
-    вариант; вопрос остаётся открытым.
+    Запись в эмулируемую RAM выполняет FB_MemStore -- ЕДИНСТВЕННАЯ ПОУ на ST
+    в проекте (один оператор Mem[Adr] := Dat, см. docs/09_БЛОКЕР_ЗАПИСЬ_В_ПАМЯТЬ.md).
+    Вынужденное отступление: в этой среде запись в массив по вычисляемому
+    индексу теряется при ЛЮБОЙ форме (проверено 7 способами). Вся логика
+    процессора -- дешифратор, АЛУ, адресация, стек, флаги, композиция -- на FBD.
     """
     s = Sheet(u"PLC_PRG: один такт процессора за скан задачи")
     s.add_comment(u"Каждый скан задачи выполняется ровно одна команда MOS 6502")
     call(s, u"FB_CPU_Core", u"Core", [(u"Enable", R(s, u"Run"))], 2, w=140)
-    for k in range(3):
-        s.assign(u"ADR%d" % k, R(s, u"WR%d" % k), 4 + k)
-    for k in range(3):
-        addr = u"GVL_MEM.Mem[ADR%d]" % k
-        s.assign(addr, s.blk(u"SEL", [(u"G", R(s, u"WR_EN%d" % k)),
-                                      (u"IN0", s.ref(addr, k)),
-                                      (u"IN1", R(s, u"WRD%d" % k))], 6 + k), 8 + k)
+    for k, col in ((0, 5), (1, 7), (2, 9)):
+        ch = call(s, u"FB_MemStore", u"Ms%d" % k,
+                  [(u"Addr", R(s, u"WR%d" % k)), (u"Data", R(s, u"WRD%d" % k)),
+                   (u"En", R(s, u"WR_EN%d" % k))], col, w=110)
+        s.assign(u"GVL_CPU.WRS%d" % k, ch, col + 1)
     return s
 
 def write(name, xml):
@@ -490,7 +489,7 @@ def main():
 
     write(u"PRG_PLC", pou_xml(
         u"PLC_PRG", u"program",
-        interface(locals_=[(u"Core", u"FB_CPU_Core"), (u"ADR0", u"WORD"), (u"ADR1", u"WORD"), (u"ADR2", u"WORD")]),
+        interface(locals_=[(u"Core", u"FB_CPU_Core"), (u"Ms0", u"FB_MemStore"), (u"Ms1", u"FB_MemStore"), (u"Ms2", u"FB_MemStore")]),
         [prg()], u"точка входа задачи"))
     print(u"готово")
 
