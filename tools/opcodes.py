@@ -70,6 +70,8 @@ OPCODES = [
     (u"CMP", u"imm", 0xC9), (u"CMP", u"zp", 0xC5), (u"CMP", u"zpx", 0xD5),
     (u"CMP", u"abs", 0xCD), (u"CMP", u"abx", 0xDD), (u"CMP", u"aby", 0xD9),
     (u"CMP", u"izx", 0xC1), (u"CMP", u"izy", 0xD1),
+    (u"CPX", u"imm", 0xE0), (u"CPX", u"zp", 0xE4), (u"CPX", u"abs", 0xEC),
+    (u"CPY", u"imm", 0xC0), (u"CPY", u"zp", 0xC4), (u"CPY", u"abs", 0xCC),
     (u"INX", u"imp", 0xE8), (u"DEX", u"imp", 0xCA),
     (u"INY", u"imp", 0xC8), (u"DEY", u"imp", 0x88),
     (u"JMP", u"abs", 0x4C), (u"JMP", u"ind", 0x6C),
@@ -115,6 +117,13 @@ def build_effects():
             src = {u"TAX": SRC_A, u"TAY": SRC_A, u"TXA": SRC_X, u"TYA": SRC_Y}[mn]
             dst = {u"TAX": u"LD_X", u"TAY": u"LD_Y", u"TXA": u"LD_A", u"TYA": u"LD_A"}[mn]
             set_(op, SET_NZ=True, SRC=src, **{dst: True})
+        elif mn in (u"CPX", u"CPY"):
+            # CPX/CPY -- sravnenie indeksnogo registra s operandom.
+            # RAN'SHE ih ne bylo v tablitse voobshche: Z/C ne vystavlyalis,
+            # i cikl "CPX #5 / BNE loop" zazikal navsegda.
+            set_(op, SET_NZ=True, SET_C=True, SRC=SRC_ALU,
+                 ALU_A=(ALU_X if mn == u"CPX" else ALU_Y), ALU_B=ALU_B_MDR,
+                 F_CMP=True, CIN_FORCE=True)
         elif mn in (u"ADC", u"SBC", u"CMP"):
             # SRC=SRC_ALU и для CMP: CMP ничего не пишет в регистры, но его
             # результат (A - M) нужен как источник флагов N/Z. Пусть REG_WR
