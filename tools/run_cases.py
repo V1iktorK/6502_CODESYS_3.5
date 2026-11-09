@@ -204,6 +204,9 @@ def main():
                 # (PC, регистры, память) и исполняем кейс начисто.
                 parked = True
                 steps = int(case.get("steps", 1) or 1)
+                pre_regs = (u"A=%s X=%s Y=%s P=%s SP=%s PC=%s"
+                            % (rd(u"GVL_CPU.A"), rd(u"GVL_CPU.X"), rd(u"GVL_CPU.Y"),
+                               rd(u"GVL_CPU.P"), rd(u"GVL_CPU.SP"), rd(u"GVL_CPU.PC")))
                 for attempt in range(2):
                     if attempt:
                         for a, v in case["pre"]:
@@ -249,6 +252,7 @@ def main():
                               u"A", u"X", u"Y", u"SP"))
                 bad.append(u"такт: " + snap)
                 bad.append(u"DBG Mem[0400]=%s" % rd(u"GVL_MEM.Mem[1024]"))
+                bad.append(u"до такта: " + pre_regs)
             ok = not bad
             results.append((name, ok, bad))
             log(u"  %-30s %s%s" % (name, u"PASS" if ok else u"FAIL",
