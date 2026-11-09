@@ -211,6 +211,19 @@ def main():
         u"\tPortAddr : WORD;\n"
         u"END_VAR\n")
     log(u"GVL_IO создан (окно $F000-$F0FF)")
+    # --- ТЗ-2: образ дискеты CP/M: 2048 секторов по 128 байт = 256 КБ.
+    # Значения НЕ инициализируем в объявлении (иначе .project раздуется на 256 КБ);
+    # содержимое грузит стенд или BIOS через окно.
+    gdk = app.create_gvl(u"GVL_DISK")
+    gdk.textual_declaration.replace(
+        u"VAR_GLOBAL\n\t(* образ дискеты CP/M: 2048 секторов x 128 байт *)\n"
+        u"\tDisk : ARRAY[0..2047, 0..127] OF BYTE;\n"
+        u"\tSector : WORD;\n"
+        u"\tOffset : BYTE;\n"
+        u"\tData : BYTE;\n"
+        u"\tRdWr : BOOL;\n"
+        u"END_VAR\n")
+    log(u"GVL_DISK создан (2048 x 128 байт)")
     gt = app.create_gvl(u"GVL_TABLE")
     gt.textual_declaration.replace(table_text())
     log(u"GVL созданы (GVL_CPU, GVL_TABLE)")
@@ -220,10 +233,43 @@ def main():
     try:
         mp = app.create_pou(u"FB_MemStore", PouType.FunctionBlock)
         mp0 = mp; mp.textual_declaration.replace(
-            u"FUNCTION_BLOCK FB_MemStore\nVAR_INPUT\n\tAddr : WORD;\n\tData : BYTE;\n\tEn : BOOL;\nEND_VAR\nVAR\n\tpB : POINTER TO BYTE;\n\tpC : POINTER TO BYTE;\n\tInit : BOOL;\nEND_VAR\n"
+            u"FUNCTION_BLOCK FB_MemStore\nVAR_INPUT\n\tAddr : WORD;\n\tData : BYTE;\n\tEn : BOOL;\nEND_VAR\nVAR\n\tpB : POINTER TO BYTE;\n\tpC : POINTER TO BYTE;\n\tpD : POINTER TO BYTE;\n\tpS : POINTER TO BYTE;\n\tInit : BOOL;\n\tDInit : BOOL;\nEND_VAR\n"
             u"VAR_OUTPUT\n\tOUT : BOOL;\nEND_VAR")
         mp.textual_implementation.replace(
-            u"IF NOT Init THEN\n\tpB := ADR(GVL_MEM.Mem[0]);\n\tInit := TRUE;\nEND_IF\n(* ТЗ-2: окно ввода-вывода $F000-$F0FF -- обращение к регистрам поля, а не к ОЗУ *)\nIF En THEN\n\tIF Addr >= 16#F000 AND Addr <= 16#F0FF THEN\n\t\tGVL_IO.PortAddr := Addr;\n\t\tGVL_IO.PortWr := Data;\n\t\tCASE Addr OF\n\t\t16#F000: GVL_IO.Io_Out := Data;\n\t\t16#F001: GVL_IO.IrqMask := Data;\n\t\t16#F002: GVL_IO.Ao0 := SHL(BYTE_TO_WORD(Data), 8) OR (GVL_IO.Ao0 AND 16#00FF);\n\t\t16#F003: GVL_IO.Ao0 := (GVL_IO.Ao0 AND 16#FF00) OR BYTE_TO_WORD(Data);\n\t\t16#F010: GVL_IO.Latch := 0;\n\t\tEND_CASE\n\tELSE\n\t\tpC := pB + Addr;\n\t\tpC^ := Data;\n\tEND_IF\nEND_IF\n(* канал загрузки от стенда/оператора: HEN -> Mem[HADR] := HDAT *)\nIF HEN THEN\n\tpC := pB + HADR;\n\tpC^ := HDAT;\nEND_IF\n(* чтение: ОЗУ или окно *)\nIF GVL_CPU.RD_ADR >= 16#F000 AND GVL_CPU.RD_ADR <= 16#F0FF THEN\n\tCASE GVL_CPU.RD_ADR OF\n\t16#F000: GVL_CPU.RD_VAL := GVL_IO.Io_In;\n\t16#F002: GVL_CPU.RD_VAL := WORD_TO_BYTE(GVL_IO.Ai0);\n\t16#F003: GVL_CPU.RD_VAL := WORD_TO_BYTE(SHR(GVL_IO.Ai0, 8));\n\t16#F006: GVL_CPU.RD_VAL := GVL_IO.IrqMask;\n\t16#F007: GVL_CPU.RD_VAL := GVL_IO.Latch;\n\t16#F008: GVL_CPU.RD_VAL := GVL_IO.Tick;\n\t16#F020: GVL_CPU.RD_VAL := GVL_IO.Key;\n\tELSE\n\t\tGVL_CPU.RD_VAL := GVL_IO.PortWr;\n\tEND_CASE\nELSE\n\tGVL_CPU.RD_VAL := GVL_MEM.Mem[GVL_CPU.RD_ADR];\nEND_IF\nOUT := TRUE;")
+            u"IF NOT Init THEN\n\tpB := ADR(GVL_MEM.Mem[0]);\n\tInit := TRUE;\nEND_IF\n"
+            u"IF NOT DInit THEN\n\tpD := ADR(GVL_DISK.Disk);\n\tDInit := TRUE;\nEND_IF\n"
+            u"IF En THEN\n"
+            u"\tIF Addr >= 16#F000 AND Addr <= 16#F0FF THEN\n\t\tGVL_IO.PortAddr := Addr;\n\t\tGVL_IO.PortWr := Data;\n"
+            u"\t\tCASE Addr OF\n"
+            u"\t\t16#F000: GVL_IO.Io_Out := Data;\n"
+            u"\t\t16#F001: GVL_IO.IrqMask := Data;\n"
+            u"\t\t16#F002: GVL_IO.Ao0 := SHL(BYTE_TO_WORD(Data), 8) OR (GVL_IO.Ao0 AND 16#00FF);\n"
+            u"\t\t16#F003: GVL_IO.Ao0 := (GVL_IO.Ao0 AND 16#FF00) OR BYTE_TO_WORD(Data);\n"
+            u"\t\t16#F009: GVL_IO.Latch := 0;\n"
+            u"\t\t16#F010: GVL_DISK.Sector := (GVL_DISK.Sector AND 16#FF00) OR BYTE_TO_WORD(Data);\n"
+            u"\t\t16#F011: GVL_DISK.Sector := (GVL_DISK.Sector AND 16#00FF) OR SHL(BYTE_TO_WORD(Data), 8);\n"
+            u"\t\t16#F012: GVL_DISK.Offset := Data;\n"
+            u"\t\t16#F013:\n\t\t\tpS := pD + (GVL_DISK.Sector * 128 + BYTE_TO_WORD(GVL_DISK.Offset));\n"
+            u"\t\t\tIF GVL_DISK.RdWr THEN\n\t\t\t\tpS^ := Data;\n\t\t\tELSE\n\t\t\t\tGVL_DISK.Data := pS^;\n\t\t\tEND_IF\n"
+            u"\t\tEND_CASE\n"
+            u"\tELSE\n\t\tpC := pB + Addr;\n\t\tpC^ := Data;\n\tEND_IF\n"
+            u"END_IF\n"
+            u"IF HEN THEN\n\tpC := pB + HADR;\n\tpC^ := HDAT;\nEND_IF\n"
+            u"IF GVL_CPU.RD_ADR >= 16#F000 AND GVL_CPU.RD_ADR <= 16#F0FF THEN\n\tCASE GVL_CPU.RD_ADR OF\n"
+            u"\t16#F000: GVL_CPU.RD_VAL := GVL_IO.Io_In;\n"
+            u"\t16#F002: GVL_CPU.RD_VAL := WORD_TO_BYTE(GVL_IO.Ai0);\n"
+            u"\t16#F003: GVL_CPU.RD_VAL := WORD_TO_BYTE(SHR(GVL_IO.Ai0, 8));\n"
+            u"\t16#F006: GVL_CPU.RD_VAL := GVL_IO.IrqMask;\n"
+            u"\t16#F007: GVL_CPU.RD_VAL := GVL_IO.Latch;\n"
+            u"\t16#F008: GVL_CPU.RD_VAL := GVL_IO.Tick;\n"
+            u"\t16#F010: GVL_CPU.RD_VAL := WORD_TO_BYTE(GVL_DISK.Sector);\n"
+            u"\t16#F011: GVL_CPU.RD_VAL := WORD_TO_BYTE(SHR(GVL_DISK.Sector, 8));\n"
+            u"\t16#F012: GVL_CPU.RD_VAL := GVL_DISK.Offset;\n"
+            u"\t16#F013: GVL_CPU.RD_VAL := GVL_DISK.Data;\n"
+            u"\t16#F020: GVL_CPU.RD_VAL := GVL_IO.Key;\n"
+            u"\tELSE\n\t\tGVL_CPU.RD_VAL := GVL_IO.PortWr;\n\tEND_CASE\n"
+            u"ELSE\n\tGVL_CPU.RD_VAL := GVL_MEM.Mem[GVL_CPU.RD_ADR];\nEND_IF\n"
+            u"OUT := TRUE;")
         log(u"FB_MemStore создана (ST, один оператор записи в RAM)")
         log(u"  декларация: [%s]" % u" | ".join(mp.textual_declaration.text.splitlines()))
         log(u"  реализация: [%s]" % u" | ".join(mp.textual_implementation.text.splitlines()))
