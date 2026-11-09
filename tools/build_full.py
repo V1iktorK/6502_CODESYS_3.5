@@ -68,6 +68,7 @@ ALUV = [(u"ALU_R", u"BYTE"), (u"CARRY", u"BOOL"), (u"V_ADD", u"BOOL"),
         (u"PREV_IS_JSR", u"BOOL"), (u"PREV_REG_WR", u"BYTE"), (u"PREV_WRD0", u"BYTE"),
         (u"PREV_WR0", u"WORD"), (u"PREV_WR_EN0", u"BOOL"), (u"PREV_EFF", u"WORD"),
         (u"PREV_P_NEW", u"BYTE"), (u"PREV_ALU_R", u"BYTE"), (u"PREV_PC", u"WORD"),
+        (u"WRS0", u"BOOL"), (u"WRS1", u"BOOL"), (u"WRS2", u"BOOL"),
         (u"PREV_A", u"BYTE"), (u"PREV_X", u"BYTE"), (u"PREV_Y", u"BYTE"), (u"PREV_SP", u"BYTE")]
 STKV = [(u"SPM1", u"BYTE"), (u"SPM2", u"BYTE"), (u"SPM3", u"BYTE"),
         (u"SPP1", u"BYTE"), (u"SPP2", u"BYTE"), (u"SPP3", u"BYTE"),
@@ -191,6 +192,19 @@ def main():
     gt = app.create_gvl(u"GVL_TABLE")
     gt.textual_declaration.replace(table_text())
     log(u"GVL созданы (GVL_CPU, GVL_TABLE)")
+
+    # FB_MemStore -- ЕДИНСТВЕННАЯ ПОУ на ST в проекте: один оператор записи в
+    # эмулируемую RAM. Вынужденное отступление, см. docs/09_БЛОКЕР_ЗАПИСЬ_В_ПАМЯТЬ.md
+    try:
+        mp = app.create_pou(u"FB_MemStore", PouType.FunctionBlock)
+        mp.textual_declaration.replace(
+            u"FUNCTION_BLOCK FB_MemStore\nVAR_INPUT\n\tAdr : WORD;\n\tDat : BYTE;\n\tEn : BOOL;\nEND_VAR\n"
+            u"VAR_OUTPUT\n\tOUT : BOOL;\nEND_VAR")
+        mp.textual_implementation.replace(
+            u"IF En THEN\n\tGVL_MEM.Mem[Adr] := Dat;\nEND_IF\nOUT := TRUE;")
+        log(u"FB_MemStore создана (ST, один оператор записи в RAM)")
+    except Exception:
+        log(u"FB_MemStore: %s" % traceback.format_exc().strip().splitlines()[-1])
 
     def names():
         out = []

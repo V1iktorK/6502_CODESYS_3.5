@@ -28,6 +28,7 @@ STEPS = [
     u"gen_regsel.py",
     u"gen_select.py",
     u"gen_snap.py",
+    u"gen_memstore.py",
     u"gen_step2.py",
     u"gen_step3.py",
     u"gen_step4.py",
