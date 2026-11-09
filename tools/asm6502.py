@@ -155,7 +155,8 @@ def _emit(mn, arg, labels, pc, out, lenient=False):
         if "rel" in tab:
             d = v - (pc + 2)
             return [tab["rel"], d & 0xFF]
-        if v < 0x100:
+        base_is_label = re.match(r"^[A-Za-z_]\w*$", base) is not None
+        if v < 0x100 and not base_is_label:
             key = "zpx" if reg == "X" else "zpy"
             if key in tab:
                 return [tab[key], v]
@@ -163,7 +164,13 @@ def _emit(mn, arg, labels, pc, out, lenient=False):
         if key in tab:
             return [tab[key], v & 0xFF, (v >> 8) & 0xFF]
         raise ValueError("нет режима %s,X для %s" % (mn, reg))
+    # Символьная метка ВСЕГДА двухбайтовая (abs), даже если в первом проходе
+    # её значение ещё неизвестно: иначе для вперёд-объявленной метки выбирался
+    # zp-режим (2 байта вместо 3) и все последующие метки съезжали на байт.
+    is_label = re.match(r"^[A-Za-z_]\w*$", a) is not None
     v = _val(a, labels, 2, lenient)
+    if is_label and "abs" in tab and "rel" not in tab:
+        return [tab["abs"], v & 0xFF, (v >> 8) & 0xFF]
     if "rel" in tab:
         d = v - (pc + 2)
         return [tab["rel"], d & 0xFF]

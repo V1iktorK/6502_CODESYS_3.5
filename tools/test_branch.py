@@ -29,10 +29,10 @@ log(u"=== TEST_BRANCH START ===")
 
 SRC = """
 ORG $0200
-        LDA #$55
-        JMP next
+        LDA #$00
+        BEQ skip
         LDA #$AA
-next:   STA $0300
+skip:   STA $0300
         HLT
 """
 mem, labels = asm6502.assemble(SRC)
@@ -97,8 +97,8 @@ try:
     wr(u"GVL_CPU.RD_ADR", u"16#0300")
     time.sleep(0.05)
     v = rd(u"GVL_CPU.RD_VAL")
-    log(u"Mem[0300] = %s (ожидалось 55)" % v)
-    log(u"T-JMP: %s" % (u"PASS" if v == 0x55 else u"FAIL"))
+    log(u"Mem[0300] = %s (ожидалось 0 -- BEQ перешёл)" % v)
+    log(u"T-BEQ0: %s" % (u"PASS" if v == 0 else u"FAIL"))
     try:
         oa.stop(); oa.logout()
     except Exception:
