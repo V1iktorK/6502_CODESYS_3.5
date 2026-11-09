@@ -190,6 +190,25 @@ def main():
         u"VAR_GLOBAL\n\tMem : ARRAY[0..65535] OF BYTE;\nEND_VAR\n")
     g = app.create_gvl(u"GVL_CPU")
     g.textual_declaration.replace(gvl_text())
+    # --- ТЗ-2: регистры окна ввода-вывода $F000..$F0FF (связь с полем)
+    gio = app.create_gvl(u"GVL_IO")
+    gio.textual_declaration.replace(
+        u"VAR_GLOBAL\n"
+        u"\t(* окно $F000-$F0FF: дискретные входы/выходы, аналог, IRQ *)" + "\n"
+        u"\tIo_In : BYTE;\n"
+        u"\tIo_Out : BYTE;\n"
+        u"\tAi0 : WORD;\n"
+        u"\tAo0 : WORD;\n"
+        u"\tIrqMask : BYTE;\n"
+        u"\tLatch : BYTE;\n"
+        u"\tTick : BYTE;\n"
+        u"\tKey : BYTE;\n"
+        u"\tConsole : ARRAY[0..255] OF BYTE;\n"
+        u"\tConPtr : BYTE;\n"
+        u"\tPortWr : BYTE;\n"
+        u"\tPortAddr : WORD;\n"
+        u"END_VAR\n")
+    log(u"GVL_IO создан (окно $F000-$F0FF)")
     gt = app.create_gvl(u"GVL_TABLE")
     gt.textual_declaration.replace(table_text())
     log(u"GVL созданы (GVL_CPU, GVL_TABLE)")
@@ -202,7 +221,7 @@ def main():
             u"FUNCTION_BLOCK FB_MemStore\nVAR_INPUT\n\tAddr : WORD;\n\tData : BYTE;\n\tEn : BOOL;\nEND_VAR\nVAR\n\tpB : POINTER TO BYTE;\n\tpC : POINTER TO BYTE;\n\tInit : BOOL;\nEND_VAR\n"
             u"VAR_OUTPUT\n\tOUT : BOOL;\nEND_VAR")
         mp.textual_implementation.replace(
-            u"IF NOT Init THEN\n\tpB := ADR(GVL_MEM.Mem[0]);\n\tInit := TRUE;\nEND_IF\nIF En THEN\n\tpC := pB + Addr;\n\tpC^ := Data;\nEND_IF\nGVL_CPU.RD_VAL := GVL_MEM.Mem[GVL_CPU.RD_ADR];\nOUT := TRUE;")
+            u"IF NOT Init THEN\n\tpB := ADR(GVL_MEM.Mem[0]);\n\tInit := TRUE;\nEND_IF\n(* ТЗ-2: окно ввода-вывода $F000-$F0FF -- обращение к регистрам поля, а не к ОЗУ *)\nIF En THEN\n\tIF Addr >= 16#F000 AND Addr <= 16#F0FF THEN\n\t\tGVL_IO.PortAddr := Addr;\n\t\tGVL_IO.PortWr := Data;\n\t\tCASE Addr OF\n\t\t16#F000: GVL_IO.Io_Out := Data;\n\t\t16#F001: GVL_IO.IrqMask := Data;\n\t\t16#F002: GVL_IO.Ao0 := SHL(BYTE_TO_WORD(Data), 8) OR (GVL_IO.Ao0 AND 16#00FF);\n\t\t16#F003: GVL_IO.Ao0 := (GVL_IO.Ao0 AND 16#FF00) OR BYTE_TO_WORD(Data);\n\t\t16#F010: GVL_IO.Latch := 0;\n\t\tEND_CASE\n\tELSE\n\t\tpC := pB + Addr;\n\t\tpC^ := Data;\n\tEND_IF\nEND_IF\n(* чтение: ОЗУ или окно *)\nIF GVL_CPU.RD_ADR >= 16#F000 AND GVL_CPU.RD_ADR <= 16#F0FF THEN\n\tCASE GVL_CPU.RD_ADR OF\n\t16#F000: GVL_CPU.RD_VAL := GVL_IO.Io_In;\n\t16#F002: GVL_CPU.RD_VAL := WORD_TO_BYTE(GVL_IO.Ai0);\n\t16#F003: GVL_CPU.RD_VAL := WORD_TO_BYTE(SHR(GVL_IO.Ai0, 8));\n\t16#F006: GVL_CPU.RD_VAL := GVL_IO.IrqMask;\n\t16#F007: GVL_CPU.RD_VAL := GVL_IO.Latch;\n\t16#F008: GVL_CPU.RD_VAL := GVL_IO.Tick;\n\t16#F020: GVL_CPU.RD_VAL := GVL_IO.Key;\n\tELSE\n\t\tGVL_CPU.RD_VAL := GVL_IO.PortWr;\n\tEND_CASE\nELSE\n\tGVL_CPU.RD_VAL := GVL_MEM.Mem[GVL_CPU.RD_ADR];\nEND_IF\nOUT := TRUE;")
         log(u"FB_MemStore создана (ST, один оператор записи в RAM)")
         log(u"  декларация: [%s]" % u" | ".join(mp.textual_declaration.text.splitlines()))
         log(u"  реализация: [%s]" % u" | ".join(mp.textual_implementation.text.splitlines()))
