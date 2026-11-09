@@ -410,8 +410,9 @@ prog_d = {0x0250: [0x20, 0x60, 0x02],   # JSR $0260
           0x0262: [0x60]}               # RTS
 code_d = [0x20, 0x60, 0x02]
 add(G, "Подпрограмма: JSR $0260 + RTS + HLT", code_d, pc0=0x0250, steps=5,
-    exp=(0xAA, 0x07, Y0, expP(n=False, z=False), SP0, 0x0255),
-    pre=[], post=[(0x01FD, 0x02), (0x01FC, 0x52)],
+    exp=(0xAA, 0x07, Y0, expP(n=True, z=False), SP0, 0x0255),
+    pre=[(a + i, b) for a, lst in prog_d.items() for i, b in enumerate(lst)],
+    post=[(0x01FD, 0x02), (0x01FC, 0x52)],
     note="5 тактов: JSR, LDX, RTS, LDA, HLT; SP вернулся в FD")
 
 # ---------------------------------------------------------------- вывод: Markdown
