@@ -237,7 +237,11 @@ def main():
                 if got.get(k) != exp[k]:
                     bad.append(u"%s ожид %02X факт %s" % (k.upper(), exp[k], got.get(k)))
             for a, v in case["post"]:
-                g = rd(u"GVL_MEM.Mem[%d]" % a)
+                # читаем ЗЕРКАЛО из ПЛК: переменный индекс на чтение работает,
+                # а чтение элемента массива через online-API может быть несвежим
+                wr(u"GVL_CPU.RD_ADR", u"16#%04X" % a)
+                time.sleep(0.05)
+                g = rd(u"GVL_CPU.RD_VAL")
                 if g != v:
                     bad.append(u"Mem[%04X] ожид %02X факт %s" % (a, v, g))
             if not parked and not bad:
