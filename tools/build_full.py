@@ -69,7 +69,7 @@ ALUV = [(u"ALU_R", u"BYTE"), (u"CARRY", u"BOOL"), (u"V_ADD", u"BOOL"),
         (u"PREV_WR0", u"WORD"), (u"PREV_WR_EN0", u"BOOL"), (u"PREV_EFF", u"WORD"),
         (u"PREV_P_NEW", u"BYTE"), (u"PREV_ALU_R", u"BYTE"), (u"PREV_PC", u"WORD"),
         (u"WRS0", u"BOOL"), (u"WRS1", u"BOOL"), (u"WRS2", u"BOOL"),
-        (u"RD_ADR", u"WORD"), (u"RD_VAL", u"BYTE"),
+        (u"RD_ADR", u"WORD"), (u"RD_VAL", u"BYTE"), (u"PUSHP", u"BOOL"), (u"PSH_VAL", u"BYTE"),
         (u"PREV_A", u"BYTE"), (u"PREV_X", u"BYTE"), (u"PREV_Y", u"BYTE"), (u"PREV_SP", u"BYTE")]
 STKV = [(u"SPM1", u"BYTE"), (u"SPM2", u"BYTE"), (u"SPM3", u"BYTE"),
         (u"SPP1", u"BYTE"), (u"SPP2", u"BYTE"), (u"SPP3", u"BYTE"),

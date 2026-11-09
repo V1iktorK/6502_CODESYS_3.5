@@ -233,9 +233,19 @@ def fb_store():
     # одной ячейки внутри одного ПОУ дают старое значение (правило 2.5) и в
     # стек уходило значение прошлого такта.
     # Для BRK (push3) в стек идёт P, для JSR (push2) -- PCH, иначе SRC.
-    W(s, u"WRD0", s.blk(u"SEL", [(u"G", push3),
+    # В стек флаги кладутся с битами B и 5 (так на 6502: PHP и BRK пишут
+    # P | $30). Условие pushP = push3 ИЛИ (push1 И SRC=P).
+    W(s, u"PUSHP", s.blk(u"OR", [(u"IN1", push3),
+                                 (u"IN2", s.blk(u"AND", [
+                                     (u"IN1", push1),
+                                     (u"IN2", s.blk(u"EQ", [
+                                         (u"IN1", R(s, u"SRC")),
+                                         (u"IN2", s.const(u"BYTE#3", 1))], 5))], 5))], 6), 7)
+    W(s, u"PSH_VAL", s.blk(u"OR", [(u"IN1", R(s, u"P_NEW")),
+                                   (u"IN2", s.const(u"BYTE#16#30", 7))], 8), 9)
+    W(s, u"WRD0", s.blk(u"SEL", [(u"G", R(s, u"PUSHP")),
                                  (u"IN0", R(s, u"STK_D0")),
-                                 (u"IN1", R(s, u"P_NEW"))], 7), 8)
+                                 (u"IN1", R(s, u"PSH_VAL"))], 10), 11)
     W(s, u"WR_EN0", en0, 6)
     # Сама запись в память вынесена в ступень SL_STWRITE: здесь WR_EN0/WRD0
     # только ВЫЧИСЛЯЮТСЯ, а чтение их в этом же ПОУ дало бы старое значение
