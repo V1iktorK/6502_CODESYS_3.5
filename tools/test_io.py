@@ -19,14 +19,21 @@ log(u"=== TEST_IO START ===")
 
 SRC = """
 ORG $0200
-start:  LDX #$00
-loop:   LDA msg,X
-        BEQ done
+        LDA #$43
         STA $F000
-        INX
-        JMP loop
-done:   HLT
-msg:    DB $43,$50,$2F,$4D,$20,$4F,$4B,$00
+        LDA #$50
+        STA $F000
+        LDA #$2F
+        STA $F000
+        LDA #$4D
+        STA $F000
+        LDA #$20
+        STA $F000
+        LDA #$4F
+        STA $F000
+        LDA #$4B
+        STA $F000
+        HLT
 """
 mem, labels = asm6502.assemble(SRC)
 log(u"образ: %d байт, метки %s" % (len(mem), labels))
@@ -92,7 +99,11 @@ try:
     time.sleep(0.2)
     wr(u"GVL_CPU.Run", u"TRUE")
     log(u"перед прогоном: PC=%s Ops=%s Run=%s" % (rd(u"GVL_CPU.PC"), rd(u"GVL_CPU.Ops"), rd(u"GVL_CPU.Run")))
-    time.sleep(1.5)
+    trace = []
+    for _ in range(40):
+        trace.append(u"%s/%s" % (rd(u"GVL_CPU.PC"), rd(u"GVL_CPU.Ops")))
+        time.sleep(0.02)
+    log(u"PC/OPs: %s" % u" ".join(trace))
     log(u"после прогона: PC=%s Ops=%s Enable=%s" % (rd(u"GVL_CPU.PC"), rd(u"GVL_CPU.Ops"), rd(u"GVL_CPU.Enable")))
     n = rd(u"GVL_IO.ConPtr")
     log(u"ConPtr = %s" % n)
