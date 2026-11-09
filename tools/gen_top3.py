@@ -335,25 +335,15 @@ def fb_core():
     # писались прямо в этом листе обычными присвоениями, а слои читали их в
     # том же скане и видели значения прошлого такта.
     ch = call(s, u"SL_PREP", u"Prep", [(u"Enable", R(s, u"Enable"))], 4, w=120)
-    W(s, u"Chain11", ch, 1)
     ch = call(s, u"FB_CPU_Addr1", u"S1", [(u"Enable", R(s, u"Enable"))], 5, w=140)
-    W(s, u"Chain1", ch, 1)
     ch = call(s, u"FB_CPU_Select", u"S2", [(u"Enable", R(s, u"Enable"))], 6, w=140)
-    W(s, u"Chain2", ch, 1)
     ch = call(s, u"FB_CPU_Stack", u"S3", [(u"Enable", R(s, u"Enable"))], 7, w=140)
-    W(s, u"Chain3", ch, 1)
     ch = call(s, u"FB_CPU_AluFlags", u"S4", [(u"Enable", R(s, u"Enable"))], 8, w=140)
-    W(s, u"Chain4", ch, 1)
     ch = call(s, u"FB_Latch", u"S5L", [(u"Enable", R(s, u"Enable"))], 9, w=140)
-    W(s, u"Chain5", ch, 1)
     ch = call(s, u"FB_CPU_PcWb", u"S5", [(u"Enable", R(s, u"Enable"))], 10, w=140)
-    W(s, u"Chain6", ch, 1)
     ch = call(s, u"SL_REGSEL", u"Srs", [], 9, w=110)
-    W(s, u"Chain13", ch, 1)
     ch = call(s, u"SL_STDATA", u"Sd", [], 10, w=110)
-    W(s, u"Chain12", ch, 1)
     ch = call(s, u"FB_CPU_Store", u"S6", [(u"Enable", R(s, u"Enable"))], 10, w=140)
-    W(s, u"Chain7", ch, 1)
     # Фактическая запись в память -- отдельной ступенью: слой Store только
     # вычисляет порты, а чтение этих же ячеек внутри него дало бы старое
     # значение (правило 2.5), из-за чего в стек ничего не попадало.
@@ -363,15 +353,11 @@ def fb_core():
           (u"ADR1", R(s, u"WR1")), (u"DAT1", R(s, u"WRD1")), (u"EN1", R(s, u"WR_EN1")),
           (u"ADR2", R(s, u"WR2")), (u"DAT2", R(s, u"WRD2")), (u"EN2", R(s, u"WR_EN2"))],
          10, w=140)
-    W(s, u"Chain10", ch, 1)
     # Регистр P собирается ПОСЛЕ FB_WriteBack (нужен REG_WR) и ДО FB_RegFile.
     ch = call(s, u"FB_CPU_Flags", u"S9", [(u"Enable", R(s, u"Enable"))], 11, w=140)
-    W(s, u"Chain9", ch, 1)
     ch = call(s, u"FB_RegFile", u"S7", [(u"Enable", R(s, u"Enable"))], 11, w=140)
-    W(s, u"Chain8", ch, 1)
     # Снимок такта -- последним: к этому моменту все значения готовы.
     ch = call(s, u"SL_SNAPSHOT", u"Snap", [], 12, w=110)
-    W(s, u"Chain14", ch, 1)
     W(s, u"Done", R(s, u"Enable"), 11)
     return s
 
@@ -394,7 +380,6 @@ def prg():
         ch = call(s, u"FB_MemStore", u"Ms%d" % k,
                   [(u"Addr", R(s, u"WR%d" % k)), (u"Data", R(s, u"WRD%d" % k)),
                    (u"En", R(s, u"WR_EN%d" % k))], col, w=110)
-        s.assign(u"GVL_CPU.WRS%d" % k, ch, col + 1)
     return s
 
 def write(name, xml):

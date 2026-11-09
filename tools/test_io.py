@@ -19,21 +19,14 @@ log(u"=== TEST_IO START ===")
 
 SRC = """
 ORG $0200
-        LDA #$43
+start:  LDX #$00
+loop:   LDA msg,X
+        BEQ done
         STA $F000
-        LDA #$50
-        STA $F000
-        LDA #$2F
-        STA $F000
-        LDA #$4D
-        STA $F000
-        LDA #$20
-        STA $F000
-        LDA #$4F
-        STA $F000
-        LDA #$4B
-        STA $F000
-        HLT
+        INX
+        JMP loop
+done:   HLT
+msg:    DB $43,$50,$2F,$4D,$20,$4F,$4B,$00
 """
 mem, labels = asm6502.assemble(SRC)
 log(u"образ: %d байт, метки %s" % (len(mem), labels))
