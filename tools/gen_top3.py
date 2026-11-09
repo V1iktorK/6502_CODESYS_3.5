@@ -311,6 +311,9 @@ def fb_latch():
     W(s, u"P_BRK", R(s, u"BRKV"), 3)
     W(s, u"P_BRN", R(s, u"BRN_TGT"), 5)
     W(s, u"P_JRET", R(s, u"JRET"), 7)
+    # P_BACK -- адрес возврата RTS (BACK = JRET+1). Без этой защёлки для
+    # PC_MODE=2 в PC_NEW уходил ноль и RTS возвращал на адрес 0.
+    W(s, u"P_BACK", R(s, u"BACK"), 7)
     W(s, u"P_ADV", R(s, u"ADV"), 9)
     W(s, u"P_KEEP", R(s, u"PC"), 11)
     W(s, u"PULL_LO", s.ref(G.MEM + u".Mem[STK_R0]", 13), 14)

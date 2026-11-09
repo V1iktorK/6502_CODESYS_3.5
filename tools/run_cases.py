@@ -216,11 +216,16 @@ def main():
                         for k, fmt, v in want:
                             wr(k, fmt % v)
                         time.sleep(0.05)
-                    for _ in range(steps if attempt else 1):
+                    # Импульсов делаем столько, сколько нужно, но останавливаемся,
+                    # как только PC дошёл до ожидаемого (для составных программ).
+                    limit = 12 if attempt else 1
+                    for _ in range(limit):
                         wr(u"GVL_CPU.Step_Pulse", u"TRUE")
-                        time.sleep(0.12)
+                        time.sleep(0.10)
                         wr(u"GVL_CPU.Step_Pulse", u"FALSE")
-                        time.sleep(0.08)
+                        time.sleep(0.06)
+                        if attempt and rd(u"GVL_CPU.PC") == exp[u"pc"]:
+                            break
             got = {}
             for _ in range(4):
                 cur = {
