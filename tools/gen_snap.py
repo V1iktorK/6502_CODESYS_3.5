@@ -27,7 +27,8 @@ CPU = u"GVL_CPU"
 FIELDS = [(u"OPs", u"BYTE"), (u"SP_MODE", u"BYTE"), (u"SRC", u"BYTE"),
           (u"IS_JSR", u"BOOL"), (u"REG_WR", u"BYTE"), (u"WRD0", u"BYTE"),
           (u"WR0", u"WORD"), (u"WR_EN0", u"BOOL"), (u"EFF", u"WORD"),
-          (u"P_NEW", u"BYTE"), (u"ALU_R", u"BYTE"), (u"PC", u"WORD")]
+          (u"P_NEW", u"BYTE"), (u"ALU_R", u"BYTE"), (u"PC", u"WORD"),
+          (u"A", u"BYTE"), (u"X", u"BYTE"), (u"Y", u"BYTE"), (u"SP", u"BYTE")]
 
 
 def build():

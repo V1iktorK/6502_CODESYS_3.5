@@ -363,7 +363,8 @@ def fb_core():
     # Фактическая запись в память -- отдельной ступенью: слой Store только
     # вычисляет порты, а чтение этих же ячеек внутри него дало бы старое
     # значение (правило 2.5), из-за чего в стек ничего не попадало.
-    ch = call(s, u"SL_STWRITE", u"Sw",
+    # запись в память выполняет сама программа PLC_PRG (см. prg())
+    if False: ch = call(s, u"SL_STWRITE", u"Sw",
          [(u"ADR0", R(s, u"WR0")), (u"DAT0", R(s, u"WRD0")), (u"EN0", R(s, u"WR_EN0")),
           (u"ADR1", R(s, u"WR1")), (u"DAT1", R(s, u"WRD1")), (u"EN1", R(s, u"WR_EN1")),
           (u"ADR2", R(s, u"WR2")), (u"DAT2", R(s, u"WRD2")), (u"EN2", R(s, u"WR_EN2"))],
@@ -382,11 +383,23 @@ def fb_core():
 
 
 def prg():
+    """PLC_PRG -- верхний уровень: такт ядра И запись в память.
+
+    Запись в эмулятор памяти делается ЗДЕСЬ, в программе задачи, а не внутри
+    вложенного ПОУ: экспериментально проверено, что `GVL_MEM.Mem[адрес-переменная]`
+    из глубоко вложенного ПОУ молча не срабатывает (код ошибки нет, значение
+    не появляется), а из программы верхнего уровня -- работает.
+    """
     s = Sheet(u"PLC_PRG: один такт процессора за скан задачи")
     s.add_comment(u"Каждый скан задачи выполняется ровно одна команда MOS 6502")
     call(s, u"FB_CPU_Core", u"Core", [(u"Enable", R(s, u"Run"))], 2, w=140)
+    # --- запись в память (порты 0, 1, 2 вычислены ядром в этом же скане)
+    for k, col in ((0, 5), (1, 8), (2, 11)):
+        addr = u"GVL_MEM.Mem[%s.WR%d]" % (CPU, k)
+        s.assign(addr, s.blk(u"SEL", [(u"G", R(s, u"WR_EN%d" % k)),
+                                      (u"IN0", s.ref(addr, col)),
+                                      (u"IN1", R(s, u"WRD%d" % k))], col), col + 1)
     return s
-
 
 def write(name, xml):
     p = os.path.join(OUT, u"%s.xml" % name)
@@ -445,7 +458,7 @@ def main():
                                  u"Dec", u"FB_Decoder6502",
                                  u"S1", u"FB_CPU_Addr1", u"S2", u"FB_CPU_Select",
                                  u"S3", u"FB_CPU_Stack", u"S4", u"FB_CPU_AluFlags",
-                                 u"Prep", u"SL_PREP", u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"Srs", u"SL_REGSEL", u"Sd", u"SL_STDATA", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"Sw", u"SL_STWRITE", u"S7", u"FB_RegFile", u"Snap", u"SL_SNAPSHOT")
+                                 u"Prep", u"SL_PREP", u"S5L", u"FB_Latch", u"S5", u"FB_CPU_PcWb", u"Srs", u"SL_REGSEL", u"Sd", u"SL_STDATA", u"S6", u"FB_CPU_Store", u"S9", u"FB_CPU_Flags", u"S7", u"FB_RegFile", u"Snap", u"SL_SNAPSHOT")
                   + [(u"STaken", u"BOOL")]),
         [fb_core()], u"такт"))
 

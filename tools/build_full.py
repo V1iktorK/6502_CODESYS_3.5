@@ -27,7 +27,7 @@ from opcodes import BOOL_SIGNALS, BYTE_SIGNALS, build_effects
 ORDER = [
     u"F_UnpackByte", u"F_PackByte", u"F_Join16", u"F_Split16", u"F_Add16",
     u"FB_Fetch", u"FB_FetchOp", u"FB_Decoder6502", u"FB_ALU6502",
-    u"SL_VSEL", u"SL_NZF", u"SL_CARRY", u"SL_STWRITE", u"SL_PREP", u"SL_STDATA", u"SL_REGSEL", u"SL_SNAPSHOT", u"SL_FLG_N", u"SL_FLG_Z", u"SL_FLG_C", u"SL_FLG_V", u"SL_FLG_I",
+    u"SL_VSEL", u"SL_NZF", u"SL_CARRY", u"SL_PREP", u"SL_STDATA", u"SL_REGSEL", u"SL_SNAPSHOT", u"SL_FLG_N", u"SL_FLG_Z", u"SL_FLG_C", u"SL_FLG_V", u"SL_FLG_I",
     u"SL_FLG_B", u"SL_FLG5", u"FB_WriteBack",
     u"SL_C1A", u"SL_C1B", u"SL_YW", u"SL_IND2", u"SL_INDP", u"SL_RELA",
     u"SL_RELC", u"SL_BRK", u"SL_SELECT12", u"SL_WDATA2",
@@ -61,12 +61,14 @@ ALUV = [(u"ALU_R", u"BYTE"), (u"CARRY", u"BOOL"), (u"V_ADD", u"BOOL"),
         (u"LAST_IS_JSR", u"BOOL"), (u"LAST_REG_WR", u"BYTE"), (u"LAST_WRD0", u"BYTE"),
         (u"LAST_WR0", u"WORD"), (u"LAST_WR_EN0", u"BOOL"), (u"LAST_EFF", u"WORD"),
         (u"LAST_P_NEW", u"BYTE"), (u"LAST_ALU_R", u"BYTE"), (u"LAST_PC", u"WORD"),
+        (u"LAST_A", u"BYTE"), (u"LAST_X", u"BYTE"), (u"LAST_Y", u"BYTE"), (u"LAST_SP", u"BYTE"),
         # история на один такт назад (после парковки JMP именно здесь
         # лежат сигналы тестируемой команды)
         (u"PREV_OPs", u"BYTE"), (u"PREV_SP_MODE", u"BYTE"), (u"PREV_SRC", u"BYTE"),
         (u"PREV_IS_JSR", u"BOOL"), (u"PREV_REG_WR", u"BYTE"), (u"PREV_WRD0", u"BYTE"),
         (u"PREV_WR0", u"WORD"), (u"PREV_WR_EN0", u"BOOL"), (u"PREV_EFF", u"WORD"),
-        (u"PREV_P_NEW", u"BYTE"), (u"PREV_ALU_R", u"BYTE"), (u"PREV_PC", u"WORD")]
+        (u"PREV_P_NEW", u"BYTE"), (u"PREV_ALU_R", u"BYTE"), (u"PREV_PC", u"WORD"),
+        (u"PREV_A", u"BYTE"), (u"PREV_X", u"BYTE"), (u"PREV_Y", u"BYTE"), (u"PREV_SP", u"BYTE")]
 STKV = [(u"SPM1", u"BYTE"), (u"SPM2", u"BYTE"), (u"SPM3", u"BYTE"),
         (u"SPP1", u"BYTE"), (u"SPP2", u"BYTE"), (u"SPP3", u"BYTE"),
         (u"SP_NEW", u"BYTE"),

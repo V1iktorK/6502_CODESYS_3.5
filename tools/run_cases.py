@@ -197,15 +197,27 @@ def main():
                     time.sleep(0.05)
                 # ПОШАГОВЫЙ РЕЖИМ: один импульс Step_Pulse = ровно одна команда
                 # (защёлка STaken в FB_CPU_Core). После импульса ядро стоит,
-                # поэтому снимок LAST_* хранит сигналы ИМЕННО этой команды,
-                # а PC равен ожидаемому адресу следующей -- без парковок.
+                # поэтому снимок LAST_* хранит сигналы ИМЕННО этой команды.
+                # ПРОГРЕВ: первый такт кейса исполняется со сигналами ПРЕДЫДУЩЕЙ
+                # команды (конвейер обновляет их по ходу такта), поэтому сперва
+                # делаем один «холостой» такт, затем восстанавливаем состояние
+                # (PC, регистры, память) и исполняем кейс начисто.
                 parked = True
                 steps = int(case.get("steps", 1) or 1)
-                for _ in range(steps):
-                    wr(u"GVL_CPU.Step_Pulse", u"TRUE")
-                    time.sleep(0.12)
-                    wr(u"GVL_CPU.Step_Pulse", u"FALSE")
-                    time.sleep(0.08)
+                for attempt in range(2):
+                    if attempt:
+                        for a, v in case["pre"]:
+                            wrb(a, v)
+                        for i, b in enumerate(code):
+                            wrb(pc0 + i, b)
+                        for k, fmt, v in want:
+                            wr(k, fmt % v)
+                        time.sleep(0.05)
+                    for _ in range(steps if attempt else 1):
+                        wr(u"GVL_CPU.Step_Pulse", u"TRUE")
+                        time.sleep(0.12)
+                        wr(u"GVL_CPU.Step_Pulse", u"FALSE")
+                        time.sleep(0.08)
             got = {}
             for _ in range(4):
                 cur = {
@@ -233,7 +245,8 @@ def main():
                 snap = u" ".join(
                     u"%s=%s" % (n, rd(u"GVL_CPU.PREV_%s" % n))
                     for n in (u"OPs", u"SP_MODE", u"IS_JSR", u"SRC", u"REG_WR",
-                              u"WRD0", u"WR0", u"WR_EN0", u"EFF", u"P_NEW"))
+                              u"WRD0", u"WR0", u"WR_EN0", u"EFF", u"P_NEW",
+                              u"A", u"X", u"Y", u"SP"))
                 bad.append(u"такт: " + snap)
                 bad.append(u"DBG Mem[0400]=%s" % rd(u"GVL_MEM.Mem[1024]"))
             ok = not bad
