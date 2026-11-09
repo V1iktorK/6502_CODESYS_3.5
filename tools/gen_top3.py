@@ -434,7 +434,7 @@ def main():
 
     write(u"FB_CPU_Select", pou_xml(
         u"FB_CPU_Select", u"functionBlock",
-        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=pouloc(u"Pick", u"SL_SELECT12", u"Wd", u"SL_WDATA2")),
+        interface(inputs=[(u"Enable", u"BOOL")], outputs=[(u"OUT", u"BOOL")], locals_=pouloc(u"Indw", u"SL_INDW", u"Pick", u"SL_SELECT12", u"Wd", u"SL_WDATA2")),
         [fb_select()], u"выбор адреса"))
 
     write(u"FB_CPU_Stack", pou_xml(
