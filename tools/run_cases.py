@@ -144,6 +144,10 @@ def main():
         exp = case["exp"]
         end = pc0 + len(code)
         try:
+            # Чистим окно программы: в памяти могли остаться байты прошлых
+            # кейсов (например JMP-парковки), и они портили составные тесты.
+            for a in range(0x0200, 0x0280):
+                wrb(a, 0)
             for a, v in case["pre"]:
                 wrb(a, v)
             wr(u"GVL_CPU.A", u"16#%02X" % case["init"]["a"])
